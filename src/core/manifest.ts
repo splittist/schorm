@@ -56,16 +56,15 @@ function addItemsToOrganization(parentElement: any, items: OrganizationItem[]): 
 export function generateManifest(options: ManifestOptions): string {
   const doc = create({ version: '1.0', encoding: 'UTF-8' });
 
-  const manifest = doc
-    .ele('manifest', {
-      identifier: options.identifier,
-      version: options.version,
-      'xmlns': 'http://www.imsglobal.org/xsd/imscp_v1p1',
-      'xmlns:adlcp': 'http://www.adlnet.org/xsd/adlcp_v1p3',
-      'xmlns:adlseq': 'http://www.adlnet.org/xsd/adlseq_v1p3',
-      'xmlns:adlnav': 'http://www.adlnet.org/xsd/adlnav_v1p3',
-      'xmlns:imsss': 'http://www.imsglobal.org/xsd/imsss',
-    });
+  const manifest = doc.ele('manifest', {
+    identifier: options.identifier,
+    version: options.version,
+    xmlns: 'http://www.imsglobal.org/xsd/imscp_v1p1',
+    'xmlns:adlcp': 'http://www.adlnet.org/xsd/adlcp_v1p3',
+    'xmlns:adlseq': 'http://www.adlnet.org/xsd/adlseq_v1p3',
+    'xmlns:adlnav': 'http://www.adlnet.org/xsd/adlnav_v1p3',
+    'xmlns:imsss': 'http://www.imsglobal.org/xsd/imsss',
+  });
 
   // Metadata
   manifest

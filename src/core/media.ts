@@ -61,10 +61,7 @@ export function copyMediaFile(src: string, dest: string): void {
   fs.copyFileSync(src, dest);
 }
 
-export function processMediaFiles(
-  mediaDir: string,
-  outputDir: string
-): MediaFile[] {
+export function processMediaFiles(mediaDir: string, outputDir: string): MediaFile[] {
   const mediaFiles: MediaFile[] = [];
 
   if (!fs.existsSync(mediaDir)) {

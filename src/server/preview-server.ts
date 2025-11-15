@@ -103,11 +103,11 @@ export class PreviewServer {
         console.log(`\n🌐 Preview server running at http://localhost:${this.options.port}/`);
         console.log(`📁 Serving files from: ${this.options.directory}`);
         console.log(`🔧 Mock SCORM API injected - check browser console for API calls\n`);
-        
+
         if (this.options.open) {
           this.openBrowser();
         }
-        
+
         resolve();
       });
 
@@ -127,7 +127,7 @@ export class PreviewServer {
   private openBrowser(): void {
     const url = `http://localhost:${this.options.port}/`;
     const platform = process.platform;
-    
+
     let command: string;
     if (platform === 'darwin') {
       command = `open ${url}`;
@@ -136,7 +136,7 @@ export class PreviewServer {
     } else {
       command = `xdg-open ${url}`;
     }
-    
+
     exec(command, (error) => {
       if (error) {
         console.log(`ℹ️  Could not open browser automatically. Please navigate to ${url}`);
@@ -146,7 +146,7 @@ export class PreviewServer {
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
     let filePath = path.join(this.options.directory, req.url || '/');
-    
+
     // Handle directory requests
     if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
       filePath = path.join(filePath, 'index.html');
@@ -166,7 +166,7 @@ export class PreviewServer {
     if (ext === '.html') {
       try {
         let html = fs.readFileSync(filePath, 'utf-8');
-        
+
         // Inject mock SCORM API right before closing </head> tag
         // If no </head> tag, inject before </body> or at the end
         if (html.includes('</head>')) {
@@ -176,7 +176,7 @@ export class PreviewServer {
         } else {
           html = html + MOCK_SCORM_API;
         }
-        
+
         res.writeHead(200, { 'Content-Type': mimeType });
         res.end(html);
       } catch (error) {

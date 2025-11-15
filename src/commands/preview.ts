@@ -11,7 +11,7 @@ export const previewCommand = new Command('preview')
   .action(async (options) => {
     try {
       const buildDir = path.resolve(options.dir);
-      
+
       // Check if build directory exists
       if (!fs.existsSync(buildDir)) {
         console.error(`❌ Build directory not found: ${buildDir}`);
@@ -21,8 +21,8 @@ export const previewCommand = new Command('preview')
 
       // Check if there are any HTML files in the build directory
       const files = fs.readdirSync(buildDir);
-      const hasHtmlFiles = files.some(file => file.endsWith('.html'));
-      
+      const hasHtmlFiles = files.some((file) => file.endsWith('.html'));
+
       if (!hasHtmlFiles) {
         console.error(`❌ No HTML files found in: ${buildDir}`);
         console.error('\nPlease run "schorm build" first to generate course content.');
@@ -30,9 +30,9 @@ export const previewCommand = new Command('preview')
       }
 
       const port = parseInt(options.port, 10);
-      
+
       console.log('🚀 Starting preview server...');
-      
+
       await startPreviewServer({
         port,
         directory: buildDir,
@@ -41,13 +41,15 @@ export const previewCommand = new Command('preview')
 
       // Keep the process running
       console.log('Press Ctrl+C to stop the server');
-      
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
         console.error(`❌ Port ${options.port} is already in use.`);
         console.error('   Try using a different port with --port <number>');
       } else {
-        console.error('❌ Failed to start preview server:', error instanceof Error ? error.message : error);
+        console.error(
+          '❌ Failed to start preview server:',
+          error instanceof Error ? error.message : error
+        );
       }
       process.exit(1);
     }

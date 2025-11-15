@@ -36,6 +36,23 @@ export interface Resource {
   files: string[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function addItemsToOrganization(parentElement: any, items: OrganizationItem[]): void {
+  for (const item of items) {
+    const itemElement = parentElement.ele('item', {
+      identifier: item.identifier,
+      identifierref: item.identifierref,
+    });
+    itemElement.ele('title').txt(item.title).up();
+
+    if (item.items && item.items.length > 0) {
+      addItemsToOrganization(itemElement, item.items);
+    }
+
+    itemElement.up();
+  }
+}
+
 export function generateManifest(options: ManifestOptions): string {
   const doc = create({ version: '1.0', encoding: 'UTF-8' });
 
@@ -72,26 +89,7 @@ export function generateManifest(options: ManifestOptions): string {
     });
     orgElement.ele('title').txt(org.title).up();
 
-    function addItems(
-      parentElement: any,
-      items: OrganizationItem[]
-    ): void {
-      for (const item of items) {
-        const itemElement = parentElement.ele('item', {
-          identifier: item.identifier,
-          identifierref: item.identifierref,
-        });
-        itemElement.ele('title').txt(item.title).up();
-
-        if (item.items && item.items.length > 0) {
-          addItems(itemElement, item.items);
-        }
-
-        itemElement.up();
-      }
-    }
-
-    addItems(orgElement, org.items);
+    addItemsToOrganization(orgElement, org.items);
     orgElement.up();
   }
 

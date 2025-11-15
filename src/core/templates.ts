@@ -42,20 +42,14 @@ export class TemplateEngine {
     for (const file of files) {
       if (file.endsWith('.html')) {
         const partialName = path.basename(file, '.html');
-        const partialContent = fs.readFileSync(
-          path.join(partialsDir, file),
-          'utf-8'
-        );
+        const partialContent = fs.readFileSync(path.join(partialsDir, file), 'utf-8');
         this.registerPartial(partialName, partialContent);
       }
     }
   }
 }
 
-export function renderTemplate(
-  template: string,
-  context: Record<string, unknown>
-): string {
+export function renderTemplate(template: string, context: Record<string, unknown>): string {
   const engine = new TemplateEngine();
   return engine.render(template, context);
 }

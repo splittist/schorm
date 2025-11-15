@@ -2,26 +2,40 @@
  * Configuration loading and management
  */
 
+import * as fs from 'fs';
+import * as yaml from 'yaml';
+
 export interface SchormConfig {
-  title: string;
-  version: string;
+  scorm_version: string;
   theme: string;
-  outputDir: string;
   [key: string]: unknown;
 }
 
 export function loadConfig(configPath: string): SchormConfig {
-  // TODO: Implement config loading from YAML
-  console.log('Loading config from:', configPath);
-  return {
-    title: 'Untitled Course',
-    version: '1.0.0',
-    theme: 'default',
-    outputDir: 'build',
-  };
+  if (!fs.existsSync(configPath)) {
+    throw new Error(`Config file not found: ${configPath}`);
+  }
+
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const config = yaml.parse(content) as SchormConfig;
+
+  // Set defaults
+  if (!config.scorm_version) {
+    config.scorm_version = '2004-4th';
+  }
+  if (!config.theme) {
+    config.theme = 'theme';
+  }
+
+  return config;
 }
 
-export function validateConfig(_config: SchormConfig): boolean {
-  // TODO: Implement config validation
+export function validateConfig(config: SchormConfig): boolean {
+  if (!config.scorm_version) {
+    return false;
+  }
+  if (!config.theme) {
+    return false;
+  }
   return true;
 }

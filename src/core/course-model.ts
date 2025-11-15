@@ -2,18 +2,21 @@
  * Course data model and structure
  */
 
+import * as fs from 'fs';
+import * as yaml from 'yaml';
+
 export interface Course {
+  id: string;
   title: string;
-  version: string;
+  version?: string;
   modules: Module[];
-  metadata: CourseMetadata;
+  metadata?: CourseMetadata;
 }
 
 export interface Module {
   id: string;
   title: string;
-  lessons: Lesson[];
-  quizzes: Quiz[];
+  items: string[];
 }
 
 export interface Lesson {
@@ -21,6 +24,7 @@ export interface Lesson {
   title: string;
   content: string;
   metadata: LessonMetadata;
+  module?: string;
 }
 
 export interface Quiz {
@@ -50,13 +54,23 @@ export interface LessonMetadata {
   [key: string]: unknown;
 }
 
-export function parseCourse(coursePath: string): Course {
-  // TODO: Implement course parsing from files
-  console.log('Parsing course from:', coursePath);
-  return {
-    title: 'Sample Course',
-    version: '1.0.0',
-    modules: [],
-    metadata: {},
-  };
+export function loadCourse(coursePath: string): Course {
+  if (!fs.existsSync(coursePath)) {
+    throw new Error(`Course file not found: ${coursePath}`);
+  }
+
+  const content = fs.readFileSync(coursePath, 'utf-8');
+  const course = yaml.parse(content) as Course;
+
+  if (!course.id) {
+    throw new Error('Course must have an id');
+  }
+  if (!course.title) {
+    throw new Error('Course must have a title');
+  }
+  if (!course.modules) {
+    course.modules = [];
+  }
+
+  return course;
 }

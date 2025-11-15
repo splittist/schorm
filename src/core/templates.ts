@@ -3,6 +3,8 @@
  */
 
 import Handlebars from 'handlebars';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class TemplateEngine {
   private handlebars: typeof Handlebars;
@@ -13,7 +15,6 @@ export class TemplateEngine {
   }
 
   private registerHelpers(): void {
-    // TODO: Register custom Handlebars helpers
     this.handlebars.registerHelper('uppercase', (str: string) => {
       return str.toUpperCase();
     });
@@ -31,6 +32,24 @@ export class TemplateEngine {
   registerPartial(name: string, partial: string): void {
     this.handlebars.registerPartial(name, partial);
   }
+
+  loadPartials(partialsDir: string): void {
+    if (!fs.existsSync(partialsDir)) {
+      return;
+    }
+
+    const files = fs.readdirSync(partialsDir);
+    for (const file of files) {
+      if (file.endsWith('.html')) {
+        const partialName = path.basename(file, '.html');
+        const partialContent = fs.readFileSync(
+          path.join(partialsDir, file),
+          'utf-8'
+        );
+        this.registerPartial(partialName, partialContent);
+      }
+    }
+  }
 }
 
 export function renderTemplate(
@@ -39,4 +58,11 @@ export function renderTemplate(
 ): string {
   const engine = new TemplateEngine();
   return engine.render(template, context);
+}
+
+export function loadTemplate(templatePath: string): string {
+  if (!fs.existsSync(templatePath)) {
+    throw new Error(`Template file not found: ${templatePath}`);
+  }
+  return fs.readFileSync(templatePath, 'utf-8');
 }

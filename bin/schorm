@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+
+// Simple shim to launch the compiled CLI
+import('../dist/cli.js').catch((err) => {
+  console.error('Error loading schorm CLI:', err.message);
+  process.exit(1);
+});

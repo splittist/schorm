@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{lesson.title}} - {{courseTitle}}</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body class="lesson-page">
+    {{> header}}
+    
+    <main class="lesson-content">
+        <article>
+            <header>
+                <h1>{{lesson.title}}</h1>
+                {{#if lesson.metadata.objectives}}
+                <div class="objectives">
+                    <h2>Learning Objectives</h2>
+                    <ul>
+                        {{#each lesson.metadata.objectives}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+            </header>
+            
+            <div class="lesson-body">
+                {{{lesson.content}}}
+            </div>
+            
+            {{#if lesson.media}}
+            <aside class="lesson-media">
+                {{> media-block media=lesson.media}}
+            </aside>
+            {{/if}}
+        </article>
+        
+        <nav class="lesson-navigation">
+            {{#if previousLesson}}
+            <a href="{{previousLesson.url}}" class="nav-previous">← Previous</a>
+            {{/if}}
+            {{#if nextLesson}}
+            <a href="{{nextLesson.url}}" class="nav-next">Next →</a>
+            {{/if}}
+        </nav>
+    </main>
+    
+    {{> footer}}
+    
+    <script src="../assets/schorm-runtime.js"></script>
+</body>
+</html>

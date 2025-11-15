@@ -1,0 +1,14 @@
+<header class="site-header">
+    <div class="container">
+        <h1 class="site-title">{{courseTitle}}</h1>
+        {{#if navigation}}
+        <nav class="site-nav">
+            <ul>
+                {{#each navigation}}
+                <li><a href="{{url}}">{{title}}</a></li>
+                {{/each}}
+            </ul>
+        </nav>
+        {{/if}}
+    </div>
+</header>

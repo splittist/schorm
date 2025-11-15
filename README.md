@@ -2,8 +2,6 @@
 
 A CLI-driven static-site generator for SCORM 2004 e-learning content.
 
----
-
 ## Overview
 
 `schorm` is a command-line tool for building SCORM 2004 packages using a workflow inspired by modern static site generators (e.g., Hugo, MkDocs, Eleventy).
@@ -25,15 +23,11 @@ This makes SCORM content:
 
 `schorm` is a great fit for teams who want to automate course creation, integrate AI agents, or simply avoid the bloat of multi-user CMS systems like Adapt Authoring.
 
----
-
 ## Project Status
 
 **Early development (v0.1)**
 This is the foundational repository setup. Core architecture, CLI scaffolding, and default theme structure are being implemented.
 Not suitable for production use yet.
-
----
 
 ## Features (Current & Planned)
 
@@ -60,8 +54,6 @@ Not suitable for production use yet.
 - Multi-SCO themes
 - Theming system with multiple built-in themes
 
----
-
 ## **Quick Start** (once implemented)
 
 ### Install globally
@@ -81,10 +73,8 @@ Not suitable for production use yet.
 `schorm preview --open`
 
 ### Validate & package as a SCORM 2004 ZIP
-schorm validate
-schorm package
-
----
+`schorm validate`
+`schorm package`
 
 ## Project Structure
 

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{quiz.title}} - {{courseTitle}}</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body class="quiz-page">
+    {{> header}}
+    
+    <main class="quiz-content">
+        <article>
+            <header>
+                <h1>{{quiz.title}}</h1>
+                {{#if quiz.instructions}}
+                <div class="quiz-instructions">
+                    <p>{{quiz.instructions}}</p>
+                </div>
+                {{/if}}
+            </header>
+            
+            <form id="quiz-form" class="quiz-form">
+                {{#each quiz.questions}}
+                <div class="question" data-question-id="{{id}}">
+                    <h3 class="question-text">{{text}}</h3>
+                    
+                    {{#if (eq type "multiple-choice")}}
+                    <div class="options">
+                        {{#each options}}
+                        <label class="option">
+                            <input type="radio" name="question-{{../id}}" value="{{@index}}">
+                            <span>{{this}}</span>
+                        </label>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    
+                    {{#if (eq type "true-false")}}
+                    <div class="options">
+                        <label class="option">
+                            <input type="radio" name="question-{{id}}" value="true">
+                            <span>True</span>
+                        </label>
+                        <label class="option">
+                            <input type="radio" name="question-{{id}}" value="false">
+                            <span>False</span>
+                        </label>
+                    </div>
+                    {{/if}}
+                    
+                    {{#if (eq type "fill-in-blank")}}
+                    <input type="text" name="question-{{id}}" class="fill-in-blank">
+                    {{/if}}
+                </div>
+                {{/each}}
+                
+                <div class="quiz-actions">
+                    <button type="submit" class="btn-submit">Submit Quiz</button>
+                </div>
+            </form>
+            
+            <div id="quiz-results" class="quiz-results" style="display: none;">
+                <h2>Results</h2>
+                <p class="score">Score: <span id="score-value"></span></p>
+                <div id="feedback"></div>
+            </div>
+        </article>
+        
+        <nav class="quiz-navigation">
+            {{#if previousItem}}
+            <a href="{{previousItem.url}}" class="nav-previous">← Previous</a>
+            {{/if}}
+            {{#if nextItem}}
+            <a href="{{nextItem.url}}" class="nav-next">Next →</a>
+            {{/if}}
+        </nav>
+    </main>
+    
+    {{> footer}}
+    
+    <script src="../assets/schorm-runtime.js"></script>
+</body>
+</html>

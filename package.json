@@ -1,0 +1,65 @@
+{
+  "name": "schorm",
+  "version": "0.1.0",
+  "description": "A CLI-driven static-site generator for SCORM 2004 e-learning content",
+  "keywords": [
+    "scorm",
+    "e-learning",
+    "cli",
+    "static-site-generator",
+    "lms"
+  ],
+  "homepage": "https://github.com/splittist/schorm#readme",
+  "bugs": {
+    "url": "https://github.com/splittist/schorm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/splittist/schorm.git"
+  },
+  "license": "MIT",
+  "author": "splittist",
+  "type": "module",
+  "bin": {
+    "schorm": "./bin/schorm"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "theme-default"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "commander": "^12.1.0",
+    "gray-matter": "^4.0.3",
+    "handlebars": "^4.7.8",
+    "markdown-it": "^14.1.0",
+    "xmlbuilder2": "^3.1.1",
+    "yaml": "^2.4.5"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.2",
+    "@types/markdown-it": "^14.1.1",
+    "@types/node": "^20.12.12",
+    "@typescript-eslint/eslint-plugin": "^7.10.0",
+    "@typescript-eslint/parser": "^7.10.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

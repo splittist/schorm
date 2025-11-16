@@ -73,13 +73,16 @@ export function processMediaFiles(mediaDir: string, outputDir: string): MediaFil
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       const relPath = path.join(relativePath, entry.name);
+      // Normalize path separators to forward slashes for cross-platform compatibility
+      // This ensures manifest hrefs use forward slashes on all platforms
+      const normalizedRelPath = relPath.split(path.sep).join('/');
 
       if (entry.isDirectory()) {
         scanDirectory(fullPath, relPath);
       } else if (entry.isFile()) {
         mediaFiles.push({
           originalPath: fullPath,
-          relativePath: relPath,
+          relativePath: normalizedRelPath,
           type: detectMediaType(fullPath),
           mimeType: '', // TODO: Determine proper MIME type
         });

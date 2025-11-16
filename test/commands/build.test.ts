@@ -481,4 +481,77 @@ Test lesson.
     expect(fs.existsSync(path.join(buildDir, 'm1-intro.html'))).toBe(true);
     expect(fs.existsSync(path.join(buildDir, 'imsmanifest.xml'))).toBe(true);
   });
+
+  it('should use forward slashes in manifest media paths on all platforms', () => {
+    const projectName = 'path-separator-test';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create media files in nested directories to test path handling
+    const mediaSubDir = path.join(projectPath, 'media', 'm1', 'images', 'screenshots');
+    fs.mkdirSync(mediaSubDir, { recursive: true });
+    fs.writeFileSync(path.join(mediaSubDir, 'sample.jpg'), 'fake image');
+
+    // Create a lesson
+    const lessonDir = path.join(projectPath, 'content', 'm1');
+    fs.mkdirSync(lessonDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lessonDir, 'intro.md'),
+      `---
+id: m1-intro
+title: "Introduction"
+module: m1
+---
+
+# Introduction
+Test lesson with nested media.
+`
+    );
+
+    // Update course.yml
+    const courseConfig = {
+      id: projectName,
+      title: projectName,
+      modules: [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: ['m1-intro'],
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Run build
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    const buildDir = path.join(projectPath, 'build');
+
+    // Verify manifest uses forward slashes for media paths
+    const manifest = fs.readFileSync(
+      path.join(buildDir, 'imsmanifest.xml'),
+      'utf-8'
+    );
+    
+    // Should contain the path with forward slashes
+    expect(manifest).toContain('media/m1/images/screenshots/sample.jpg');
+    
+    // Should NOT contain any backslashes in file hrefs
+    // This regex matches href attributes in the manifest
+    const hrefMatches = manifest.match(/href="([^"]+)"/g) || [];
+    for (const hrefMatch of hrefMatches) {
+      expect(hrefMatch).not.toContain('\\');
+    }
+  });
 });

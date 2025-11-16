@@ -6,7 +6,7 @@ import MarkdownIt from 'markdown-it';
 import matter from 'gray-matter';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { Lesson, LessonMetadata, MediaItem, Course } from './course-model.js';
+import type { Lesson, MediaItem, Course } from './course-model.js';
 import { validateLessonFrontmatter } from './course-model.js';
 import { markdownMediaShortcodes, extractMediaFromTokens } from './markdown-media-shortcodes.js';
 

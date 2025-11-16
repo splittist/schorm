@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Course, loadCourse, findQuizzes, loadQuiz } from './course-model.js';
 import { findLessons, parseLesson } from './markdown.js';
-import type { Lesson, Quiz, MediaItem } from './course-model.js';
+import type { MediaItem } from './course-model.js';
 
 export interface ValidationIssue {
   code: string;

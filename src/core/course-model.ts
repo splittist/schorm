@@ -83,3 +83,48 @@ export function loadCourse(coursePath: string): Course {
 
   return course;
 }
+
+/**
+ * Save a course object to a YAML file
+ */
+export function saveCourse(coursePath: string, course: Course): void {
+  const content = yaml.stringify(course);
+  fs.writeFileSync(coursePath, content, 'utf-8');
+}
+
+/**
+ * Validate module ID format
+ */
+export function validateModuleId(moduleId: string): void {
+  const validPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!validPattern.test(moduleId)) {
+    throw new Error(
+      `Invalid module ID "${moduleId}". Module IDs must contain only letters, numbers, hyphens, and underscores.`
+    );
+  }
+}
+
+/**
+ * Add a new module to the course
+ */
+export function addModule(
+  course: Course,
+  moduleId: string,
+  moduleTitle: string
+): void {
+  // Validate module ID format
+  validateModuleId(moduleId);
+
+  // Check for duplicate module ID
+  const existingModule = course.modules.find((m) => m.id === moduleId);
+  if (existingModule) {
+    throw new Error(`Module "${moduleId}" already exists in course.yml.`);
+  }
+
+  // Add the new module
+  course.modules.push({
+    id: moduleId,
+    title: moduleTitle,
+    items: [],
+  });
+}

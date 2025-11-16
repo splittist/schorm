@@ -604,3 +604,362 @@ describe('schorm new lesson command', () => {
     expect(fs.existsSync(path.join(projectPath, 'content', 'm2-intro.md'))).toBe(true);
   });
 });
+
+describe('schorm new quiz command', () => {
+  beforeEach(() => {
+    // Create test output directory
+    if (!fs.existsSync(TEST_DIR)) {
+      fs.mkdirSync(TEST_DIR, { recursive: true });
+    }
+  });
+
+  afterEach(() => {
+    // Clean up test output directory
+    if (fs.existsSync(TEST_DIR)) {
+      fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    }
+  });
+
+  it('should create a new quiz with explicit title', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module first
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create a new quiz
+    execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint Quiz"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify quiz file was created
+    const quizPath = path.join(projectPath, 'quizzes', 'm1-checkpoint.yml');
+    expect(fs.existsSync(quizPath)).toBe(true);
+
+    // Verify quiz content
+    const quizContent = fs.readFileSync(quizPath, 'utf-8');
+    expect(quizContent).toContain('id: m1-checkpoint');
+    expect(quizContent).toContain('title: "Checkpoint Quiz"');
+    expect(quizContent).toContain('questions:');
+    expect(quizContent).toContain('type: multiple-choice');
+
+    // Verify course.yml was updated
+    const courseConfig = yaml.parse(
+      fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
+    );
+    expect(courseConfig.modules[0].items).toContain('m1-checkpoint');
+  });
+
+  it('should create a new quiz with default capitalized title', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module first
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create a new quiz without title
+    execSync(`${CLI_PATH} new quiz m1/quiz1`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify quiz file was created
+    const quizPath = path.join(projectPath, 'quizzes', 'm1-quiz1.yml');
+    expect(fs.existsSync(quizPath)).toBe(true);
+
+    // Verify quiz content has capitalized title
+    const quizContent = fs.readFileSync(quizPath, 'utf-8');
+    expect(quizContent).toContain('title: "Quiz1"');
+  });
+
+  it('should fail when module does not exist', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Try to create a quiz without creating the module first
+    expect(() => {
+      execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint Quiz"`, {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    }).toThrow(/Module "m1" not found/);
+  });
+
+  it('should fail when missing slash in path', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Try to create a quiz with invalid format
+    expect(() => {
+      execSync(`${CLI_PATH} new quiz m1-checkpoint "Checkpoint Quiz"`, {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    }).toThrow(/Invalid quiz path format/);
+  });
+
+  it('should fail when quiz file already exists', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create a quiz
+    execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint Quiz"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Try to create the same quiz again
+    expect(() => {
+      execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint Quiz Again"`, {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    }).toThrow(/Quiz file already exists/);
+  });
+
+  it('should add quiz to module items array', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create multiple quizzes
+    execSync(`${CLI_PATH} new quiz m1/quiz1 "Quiz 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new quiz m1/quiz2 "Quiz 2"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new quiz m1/final "Final Quiz"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify all quizzes were added to the module
+    const courseConfig = yaml.parse(
+      fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
+    );
+    expect(courseConfig.modules[0].items).toHaveLength(3);
+    expect(courseConfig.modules[0].items).toContain('m1-quiz1');
+    expect(courseConfig.modules[0].items).toContain('m1-quiz2');
+    expect(courseConfig.modules[0].items).toContain('m1-final');
+  });
+
+  it('should fail when course.yml does not exist', () => {
+    const projectPath = path.join(TEST_DIR, 'no-course-project');
+    fs.mkdirSync(projectPath, { recursive: true });
+
+    // Try to create a quiz without course.yml
+    expect(() => {
+      execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint Quiz"`, {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    }).toThrow(/course\.yml not found/);
+  });
+
+  it('should handle quiz IDs with hyphens and underscores', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create quizzes with various valid ID formats
+    execSync(`${CLI_PATH} new quiz m1/quiz-one "Quiz One"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new quiz m1/quiz_two "Quiz Two"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify quiz files were created
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1-quiz-one.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1-quiz_two.yml'))).toBe(true);
+
+    // Verify they were added to module
+    const courseConfig = yaml.parse(
+      fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
+    );
+    expect(courseConfig.modules[0].items).toContain('m1-quiz-one');
+    expect(courseConfig.modules[0].items).toContain('m1-quiz_two');
+  });
+
+  it('should fail when quiz ID contains invalid characters', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Try to create a quiz with invalid characters
+    expect(() => {
+      execSync(`${CLI_PATH} new quiz "m1/quiz with spaces" "Invalid"`, {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    }).toThrow(/Invalid quiz ID/);
+  });
+
+  it('should create quizzes in multiple modules', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create multiple modules
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new module m2 "Module 2"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create quizzes in different modules
+    execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new quiz m2/checkpoint "Checkpoint 2"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify course.yml
+    const courseConfig = yaml.parse(
+      fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
+    );
+    expect(courseConfig.modules[0].items).toContain('m1-checkpoint');
+    expect(courseConfig.modules[1].items).toContain('m2-checkpoint');
+
+    // Verify quiz files
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1-checkpoint.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm2-checkpoint.yml'))).toBe(true);
+  });
+
+  it('should mix lessons and quizzes in the same module', () => {
+    const projectName = 'test-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a module
+    execSync(`${CLI_PATH} new module m1 "Module 1"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Create lessons and quizzes
+    execSync(`${CLI_PATH} new lesson m1/intro "Introduction"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new quiz m1/checkpoint "Checkpoint Quiz"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new lesson m1/summary "Summary"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+    execSync(`${CLI_PATH} new quiz m1/final "Final Quiz"`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify all items were added to the module in order
+    const courseConfig = yaml.parse(
+      fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
+    );
+    expect(courseConfig.modules[0].items).toHaveLength(4);
+    expect(courseConfig.modules[0].items[0]).toBe('m1-intro');
+    expect(courseConfig.modules[0].items[1]).toBe('m1-checkpoint');
+    expect(courseConfig.modules[0].items[2]).toBe('m1-summary');
+    expect(courseConfig.modules[0].items[3]).toBe('m1-final');
+  });
+});

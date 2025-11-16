@@ -99,6 +99,54 @@ The output of schorm build includes:
 
 All of this is zipped by schorm package into a SCORM-compliant bundle.
 
+## Content Authoring
+
+### Writing Lessons
+
+Lessons are authored in Markdown with YAML frontmatter:
+
+```markdown
+---
+id: m1-intro
+title: "Introduction to SCORM"
+module: m1
+objectives:
+  - Understand SCORM basics
+  - Learn about SCOs
+---
+
+# Introduction
+
+This is your lesson content.
+```
+
+### Media Shortcodes (v0.2+)
+
+Embed audio and video directly in your Markdown lessons using shortcodes:
+
+**Audio:**
+```markdown
+{{audio src="../media/m1/intro.mp3" title="Introduction Audio"}}
+```
+
+**Video:**
+```markdown
+{{video src="../media/m1/demo.mp4" poster="../media/m1/poster.jpg" title="Demo Video"}}
+```
+
+**Attributes:**
+- `src` (required) — path to media file
+- `title` (optional) — descriptive label
+- `poster` (video only) — poster/thumbnail image
+- `id` (optional) — custom ID (auto-generated if omitted)
+
+Both single and double quotes are supported:
+```markdown
+{{audio src='file.mp3' title='My Audio'}}
+```
+
+Media shortcodes are processed during the build and rendered inline where they appear in your content.
+
 ---
 
 ## Why `schorm`?

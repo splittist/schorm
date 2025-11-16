@@ -93,15 +93,22 @@ export function saveCourse(coursePath: string, course: Course): void {
 }
 
 /**
+ * Generic ID validation - validates format for modules, lessons, and quizzes
+ */
+export function validateId(id: string, type: string = 'ID'): void {
+  const validPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!validPattern.test(id)) {
+    throw new Error(
+      `Invalid ${type} "${id}". IDs must contain only letters, numbers, hyphens, and underscores.`
+    );
+  }
+}
+
+/**
  * Validate module ID format
  */
 export function validateModuleId(moduleId: string): void {
-  const validPattern = /^[a-zA-Z0-9_-]+$/;
-  if (!validPattern.test(moduleId)) {
-    throw new Error(
-      `Invalid module ID "${moduleId}". Module IDs must contain only letters, numbers, hyphens, and underscores.`
-    );
-  }
+  validateId(moduleId, 'module ID');
 }
 
 /**
@@ -133,12 +140,7 @@ export function addModule(
  * Validate lesson ID format
  */
 export function validateLessonId(lessonId: string): void {
-  const validPattern = /^[a-zA-Z0-9_-]+$/;
-  if (!validPattern.test(lessonId)) {
-    throw new Error(
-      `Invalid lesson ID "${lessonId}". Lesson IDs must contain only letters, numbers, hyphens, and underscores.`
-    );
-  }
+  validateId(lessonId, 'lesson ID');
 }
 
 /**
@@ -149,34 +151,14 @@ export function addLessonToModule(
   moduleId: string,
   lessonId: string
 ): void {
-  // Find the module
-  const module = course.modules.find((m) => m.id === moduleId);
-  if (!module) {
-    throw new Error(
-      `Module "${moduleId}" not found in course.yml. Run "schorm new module ${moduleId}" first.`
-    );
-  }
-
-  // Check if lesson ID already exists in the module
-  if (module.items.includes(lessonId)) {
-    // Silently skip if already present (idempotent behavior)
-    return;
-  }
-
-  // Add the lesson ID to the module's items
-  module.items.push(lessonId);
+  appendItemToModule(course, moduleId, lessonId);
 }
 
 /**
  * Validate quiz ID format
  */
 export function validateQuizId(quizId: string): void {
-  const validPattern = /^[a-zA-Z0-9_-]+$/;
-  if (!validPattern.test(quizId)) {
-    throw new Error(
-      `Invalid quiz ID "${quizId}". Quiz IDs must contain only letters, numbers, hyphens, and underscores.`
-    );
-  }
+  validateId(quizId, 'quiz ID');
 }
 
 /**
@@ -187,20 +169,56 @@ export function addQuizToModule(
   moduleId: string,
   quizId: string
 ): void {
-  // Find the module
+  appendItemToModule(course, moduleId, quizId);
+}
+
+/**
+ * Find and return a module, throwing an error if not found
+ */
+export function ensureModuleExists(course: Course, moduleId: string): Module {
   const module = course.modules.find((m) => m.id === moduleId);
   if (!module) {
     throw new Error(
       `Module "${moduleId}" not found in course.yml. Run "schorm new module ${moduleId}" first.`
     );
   }
+  return module;
+}
 
-  // Check if quiz ID already exists in the module
-  if (module.items.includes(quizId)) {
+/**
+ * Generic function to append an item to a module's items array
+ */
+export function appendItemToModule(
+  course: Course,
+  moduleId: string,
+  itemId: string
+): void {
+  const module = ensureModuleExists(course, moduleId);
+
+  // Check if item ID already exists in the module
+  if (module.items.includes(itemId)) {
     // Silently skip if already present (idempotent behavior)
     return;
   }
 
-  // Add the quiz ID to the module's items
-  module.items.push(quizId);
+  // Add the item ID to the module's items
+  module.items.push(itemId);
+}
+
+/**
+ * Convert an ID to a human-readable title
+ * Examples:
+ *   "intro" -> "Intro"
+ *   "getting-started" -> "Getting Started"
+ *   "m1_overview" -> "M1 Overview"
+ */
+export function titleFromId(id: string): string {
+  // Replace hyphens and underscores with spaces
+  const words = id.replace(/[-_]/g, ' ');
+  
+  // Capitalize first letter of each word
+  return words
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }

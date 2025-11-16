@@ -9,14 +9,8 @@ import {
   addLessonToModule,
   validateQuizId,
   addQuizToModule,
+  titleFromId,
 } from '../core/course-model.js';
-
-/**
- * Capitalize the first letter of a string
- */
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
 
 /**
  * Create a new lesson
@@ -50,7 +44,7 @@ function createLesson(lessonPath: string, title?: string): void {
     const course = loadCourse(coursePath);
 
     // Default title to capitalized lesson ID if not provided
-    const lessonTitle = title || capitalize(lessonId);
+    const lessonTitle = title || titleFromId(lessonId);
 
     // Determine file path: content/<module-id>-<lesson-id>.md
     const fileName = `${moduleId}-${lessonId}.md`;
@@ -116,7 +110,7 @@ function createModule(moduleId: string, moduleTitle?: string): void {
     const course = loadCourse(coursePath);
 
     // Default title to capitalized module ID if not provided
-    const title = moduleTitle || capitalize(moduleId);
+    const title = moduleTitle || titleFromId(moduleId);
 
     // Add the module (this will validate and check for duplicates)
     addModule(course, moduleId, title);
@@ -182,7 +176,7 @@ function createQuiz(quizPath: string, title?: string): void {
     const course = loadCourse(coursePath);
 
     // Default title to capitalized quiz ID if not provided
-    const quizTitle = title || capitalize(quizId);
+    const quizTitle = title || titleFromId(quizId);
 
     // Determine file path: quizzes/<module-id>-<quiz-id>.yml
     const fileName = `${moduleId}-${quizId}.yml`;

@@ -6,7 +6,8 @@ import MarkdownIt from 'markdown-it';
 import matter from 'gray-matter';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { Lesson, LessonMetadata, MediaItem } from './course-model.js';
+import type { Lesson, LessonMetadata, MediaItem, Course } from './course-model.js';
+import { validateLessonFrontmatter } from './course-model.js';
 import { markdownMediaShortcodes, extractMediaFromTokens } from './markdown-media-shortcodes.js';
 
 export class MarkdownProcessor {
@@ -59,7 +60,7 @@ export function renderMarkdown(markdown: string): string {
   return processor.render(markdown);
 }
 
-export function parseLesson(filePath: string): Lesson {
+export function parseLesson(filePath: string, course: Course): Lesson {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Lesson file not found: ${filePath}`);
   }
@@ -67,21 +68,32 @@ export function parseLesson(filePath: string): Lesson {
   const content = fs.readFileSync(filePath, 'utf-8');
   const parsed = matter(content);
 
-  const metadata = parsed.data as LessonMetadata & { id?: string; title?: string; module?: string };
-  const id = metadata.id || path.basename(filePath, '.md');
-  const title = metadata.title || id;
-  const module = metadata.module;
+  // Validate frontmatter against schema
+  const validatedFrontmatter = validateLessonFrontmatter(
+    parsed.data,
+    course,
+    filePath
+  );
 
   // Render markdown to HTML and extract media
   const processor = new MarkdownProcessor();
   const { html: htmlContent, media } = processor.parseWithMedia(parsed.content);
 
   return {
-    id,
-    title,
+    type: 'lesson',
+    id: validatedFrontmatter.id,
+    title: validatedFrontmatter.title,
+    module: validatedFrontmatter.module,
     content: htmlContent,
-    metadata,
-    module,
+    metadata: {
+      duration: validatedFrontmatter.duration,
+      objectives: validatedFrontmatter.objectives,
+      // Include any extra frontmatter fields in metadata
+      ...Object.fromEntries(
+        Object.entries(validatedFrontmatter)
+          .filter(([key]) => !['id', 'title', 'module', 'type', 'order', 'duration', 'objectives'].includes(key))
+      ),
+    },
     media: media.length > 0 ? media : undefined,
   };
 }

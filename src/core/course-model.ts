@@ -28,11 +28,12 @@ export interface MediaItem {
 }
 
 export interface Lesson {
+  type: 'lesson';
   id: string;
   title: string;
+  module: string;
   content: string;
   metadata: LessonMetadata;
-  module?: string;
   media?: MediaItem[];
 }
 
@@ -58,6 +59,20 @@ export interface CourseMetadata {
 }
 
 export interface LessonMetadata {
+  duration?: number;
+  objectives?: string[];
+  [key: string]: unknown;
+}
+
+/**
+ * Frontmatter schema for lesson Markdown files
+ */
+export interface LessonFrontmatter {
+  id: string;
+  title: string;
+  module: string;
+  type?: string;
+  order?: number;
   duration?: number;
   objectives?: string[];
   [key: string]: unknown;
@@ -221,4 +236,98 @@ export function titleFromId(id: string): string {
     .split(' ')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * Validate lesson frontmatter against schema
+ * Throws an error with a clear message if validation fails
+ * 
+ * @param frontmatter - Raw frontmatter data from gray-matter
+ * @param course - Course object to validate module reference
+ * @param filePath - Path to the lesson file for error messages
+ * @returns Validated and typed LessonFrontmatter
+ */
+export function validateLessonFrontmatter(
+  frontmatter: any,
+  course: Course,
+  filePath: string
+): LessonFrontmatter {
+  // Validate 'id' field
+  if (frontmatter.id === undefined || frontmatter.id === null) {
+    throw new Error(
+      `${filePath}: frontmatter missing required field "id"`
+    );
+  }
+  if (typeof frontmatter.id !== 'string' || frontmatter.id.trim() === '') {
+    throw new Error(
+      `${filePath}: frontmatter "id" must be a non-empty string`
+    );
+  }
+  
+  // Validate ID format
+  try {
+    validateLessonId(frontmatter.id);
+  } catch (error) {
+    throw new Error(
+      `${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  // Validate 'title' field
+  if (frontmatter.title === undefined || frontmatter.title === null) {
+    throw new Error(
+      `${filePath}: frontmatter missing required field "title"`
+    );
+  }
+  if (typeof frontmatter.title !== 'string' || frontmatter.title.trim() === '') {
+    throw new Error(
+      `${filePath}: frontmatter "title" must be a non-empty string`
+    );
+  }
+
+  // Validate 'module' field
+  if (frontmatter.module === undefined || frontmatter.module === null) {
+    throw new Error(
+      `${filePath}: frontmatter missing required field "module"`
+    );
+  }
+  if (typeof frontmatter.module !== 'string' || frontmatter.module.trim() === '') {
+    throw new Error(
+      `${filePath}: frontmatter "module" must be a non-empty string`
+    );
+  }
+
+  // Check that module exists in course
+  const moduleExists = course.modules.some((m) => m.id === frontmatter.module);
+  if (!moduleExists) {
+    throw new Error(
+      `${filePath}: frontmatter "module" refers to unknown module "${frontmatter.module}"`
+    );
+  }
+
+  // Validate 'type' field if present
+  if (frontmatter.type !== undefined) {
+    if (typeof frontmatter.type !== 'string') {
+      throw new Error(
+        `${filePath}: frontmatter "type" must be a string`
+      );
+    }
+    if (frontmatter.type !== 'lesson') {
+      throw new Error(
+        `${filePath}: frontmatter "type" must be "lesson" (got "${frontmatter.type}")`
+      );
+    }
+  }
+
+  // Validate 'order' field if present
+  if (frontmatter.order !== undefined) {
+    if (typeof frontmatter.order !== 'number') {
+      throw new Error(
+        `${filePath}: frontmatter "order" must be a number`
+      );
+    }
+  }
+
+  // Return validated frontmatter with proper typing
+  return frontmatter as LessonFrontmatter;
 }

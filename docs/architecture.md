@@ -111,8 +111,8 @@ All business logic resides in src/core.
 Defines TypeScript interfaces for the internal representation:
 - Course
 - Module
-- SCO (Sharable Content Object)
 - Lesson
+- LessonFrontmatter (v0.2+)
 - Quiz
 - Question
 - MediaItem
@@ -121,13 +121,26 @@ This is the source of truth for the entire build pipeline.
 
 Also contains functions to:
 - load course.yml
+- validate lesson frontmatter against schema (v0.2+)
+- validate IDs (modules, lessons, quizzes)
 - resolve item references
 - normalise paths
 - detect structural errors
 
+**Frontmatter Validation (v0.2+):**
+
+The `validateLessonFrontmatter()` function enforces the lesson schema:
+- Checks for required fields (`id`, `title`, `module`)
+- Validates field types and formats
+- Verifies module existence in course
+- Provides detailed error messages with file paths
+
+This ensures that all lessons have consistent, valid metadata before rendering.
+
 ### 5.3 core/markdown.ts
 - Parses Markdown using markdown-it
 - Processes frontmatter using gray-matter
+- Validates frontmatter against schema (v0.2+)
 - Registers markdown-it plugins for extended functionality
 - Extracts media references from shortcodes
 - Converts content to HTML blocks for template insertion
@@ -135,6 +148,39 @@ Also contains functions to:
 The `MarkdownProcessor` class provides:
 - `render(markdown)` - Basic markdown rendering
 - `parseWithMedia(markdown)` - Parse markdown and extract media items
+
+The `parseLesson()` function:
+- Reads lesson Markdown files
+- Parses and validates frontmatter against schema
+- Renders markdown content to HTML
+- Returns a strongly-typed `Lesson` object
+
+**Lesson Frontmatter Schema (v0.2+):**
+
+Every lesson Markdown file must include valid YAML frontmatter with the following structure:
+
+```yaml
+---
+id: <string>         # required, unique across course, pattern: [a-zA-Z0-9_-]+
+title: <string>      # required, non-empty
+module: <string>     # required, must match a module id in course.yml
+type: "lesson"       # optional, reserved for future use
+order: <number>      # optional, for future ordering logic
+---
+```
+
+**Frontmatter Validation Rules:**
+- `id`: Required, must be non-empty string matching pattern `[a-zA-Z0-9_-]+`
+- `title`: Required, must be non-empty string
+- `module`: Required, must reference an existing module ID in `course.yml`
+- `type`: Optional, if present must be `"lesson"`
+- `order`: Optional, if present must be a number
+- Unknown fields are allowed and stored in lesson metadata
+
+**Error Handling:**
+- Validation errors include file path and specific field information
+- Build fails fast on first validation error
+- Clear, actionable error messages guide content authors
 
 ### 5.3.1 core/markdown-media-shortcodes.ts (v0.2+)
 
@@ -377,11 +423,29 @@ type SCO = Lesson | Quiz;
 
 interface Lesson {
   type: "lesson";
+  id: string;          // validated pattern: [a-zA-Z0-9_-]+
+  title: string;
+  module: string;      // must reference existing module
+  content: string;     // rendered Markdown HTML
+  metadata: LessonMetadata;
+  media?: MediaItem[];
+}
+
+interface LessonMetadata {
+  duration?: number;
+  objectives?: string[];
+  [key: string]: unknown;  // additional frontmatter fields
+}
+
+interface LessonFrontmatter {
   id: string;
   title: string;
   module: string;
-  html: string;        // rendered Markdown
-  media: MediaItem[];
+  type?: string;
+  order?: number;
+  duration?: number;
+  objectives?: string[];
+  [key: string]: unknown;
 }
 
 interface Quiz {
@@ -389,7 +453,9 @@ interface Quiz {
   id: string;
   title: string;
   module: string;
-  questions: 
+  questions: Question[];
+}
+``` 
 ```
 
 ### 11.3 Media Items

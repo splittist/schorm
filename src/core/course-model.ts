@@ -128,3 +128,41 @@ export function addModule(
     items: [],
   });
 }
+
+/**
+ * Validate lesson ID format
+ */
+export function validateLessonId(lessonId: string): void {
+  const validPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!validPattern.test(lessonId)) {
+    throw new Error(
+      `Invalid lesson ID "${lessonId}". Lesson IDs must contain only letters, numbers, hyphens, and underscores.`
+    );
+  }
+}
+
+/**
+ * Add a lesson to a module's items array
+ */
+export function addLessonToModule(
+  course: Course,
+  moduleId: string,
+  lessonId: string
+): void {
+  // Find the module
+  const module = course.modules.find((m) => m.id === moduleId);
+  if (!module) {
+    throw new Error(
+      `Module "${moduleId}" not found in course.yml. Run "schorm new module ${moduleId}" first.`
+    );
+  }
+
+  // Check if lesson ID already exists in the module
+  if (module.items.includes(lessonId)) {
+    // Silently skip if already present (idempotent behavior)
+    return;
+  }
+
+  // Add the lesson ID to the module's items
+  module.items.push(lessonId);
+}

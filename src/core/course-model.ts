@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import * as yaml from 'yaml';
 
 export interface Course {
@@ -40,6 +41,7 @@ export interface Lesson {
 export interface Quiz {
   id: string;
   title: string;
+  module?: string;
   questions: Question[];
 }
 
@@ -330,4 +332,54 @@ export function validateLessonFrontmatter(
 
   // Return validated frontmatter with proper typing
   return frontmatter as LessonFrontmatter;
+}
+
+/**
+ * Load a quiz from a YAML file
+ */
+export function loadQuiz(quizPath: string): Quiz {
+  if (!fs.existsSync(quizPath)) {
+    throw new Error(`Quiz file not found: ${quizPath}`);
+  }
+
+  const content = fs.readFileSync(quizPath, 'utf-8');
+  const quiz = yaml.parse(content) as Quiz;
+
+  if (!quiz.id) {
+    throw new Error(`${quizPath}: quiz missing required field "id"`);
+  }
+  if (!quiz.title) {
+    throw new Error(`${quizPath}: quiz missing required field "title"`);
+  }
+  if (!quiz.questions || !Array.isArray(quiz.questions)) {
+    throw new Error(`${quizPath}: quiz missing required field "questions" or it's not an array`);
+  }
+
+  return quiz;
+}
+
+/**
+ * Find all quiz files in the quizzes directory
+ */
+export function findQuizzes(quizzesDir: string): string[] {
+  const quizzes: string[] = [];
+
+  if (!fs.existsSync(quizzesDir)) {
+    return quizzes;
+  }
+
+  function scanDirectory(dir: string): void {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanDirectory(fullPath);
+      } else if (entry.isFile() && (entry.name.endsWith('.yml') || entry.name.endsWith('.yaml'))) {
+        quizzes.push(fullPath);
+      }
+    }
+  }
+
+  scanDirectory(quizzesDir);
+  return quizzes;
 }

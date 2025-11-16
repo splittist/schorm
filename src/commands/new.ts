@@ -7,6 +7,8 @@ import {
   addModule,
   validateLessonId,
   addLessonToModule,
+  validateQuizId,
+  addQuizToModule,
 } from '../core/course-model.js';
 
 /**
@@ -148,6 +150,93 @@ function createModule(moduleId: string, moduleTitle?: string): void {
   }
 }
 
+/**
+ * Create a new quiz
+ */
+function createQuiz(quizPath: string, title?: string): void {
+  const coursePath = path.resolve(process.cwd(), 'course.yml');
+
+  // Check if course.yml exists
+  if (!fs.existsSync(coursePath)) {
+    console.error('Error: course.yml not found.');
+    console.error('Please run "schorm init" first to create a new project.');
+    process.exit(1);
+  }
+
+  // Parse module-id/quiz-id format
+  const parts = quizPath.split('/');
+  if (parts.length !== 2) {
+    console.error('Error: Invalid quiz path format.');
+    console.error('Usage: schorm new quiz <module-id>/<quiz-id> [title]');
+    console.error('Example: schorm new quiz m1/checkpoint "Checkpoint Quiz"');
+    process.exit(1);
+  }
+
+  const [moduleId, quizId] = parts;
+
+  try {
+    // Validate quiz ID format
+    validateQuizId(quizId);
+
+    // Load existing course
+    const course = loadCourse(coursePath);
+
+    // Default title to capitalized quiz ID if not provided
+    const quizTitle = title || capitalize(quizId);
+
+    // Determine file path: quizzes/<module-id>-<quiz-id>.yml
+    const fileName = `${moduleId}-${quizId}.yml`;
+    const filePath = path.resolve(process.cwd(), 'quizzes', fileName);
+
+    // Check if file already exists
+    if (fs.existsSync(filePath)) {
+      console.error(`Error: Quiz file already exists: ${filePath}`);
+      process.exit(1);
+    }
+
+    // Create the quiz file content
+    const quizContent = `id: ${moduleId}-${quizId}
+title: "${quizTitle}"
+questions:
+  - id: q1
+    type: multiple-choice
+    text: "Your question text here"
+    options:
+      - "Option A"
+      - "Option B"
+      - "Option C"
+      - "Option D"
+    correctAnswer: "Option A"
+`;
+
+    // Ensure quizzes directory exists
+    const quizzesDir = path.resolve(process.cwd(), 'quizzes');
+    if (!fs.existsSync(quizzesDir)) {
+      fs.mkdirSync(quizzesDir, { recursive: true });
+    }
+
+    // Write the quiz file
+    fs.writeFileSync(filePath, quizContent, 'utf-8');
+
+    // Add quiz to module's items array
+    addQuizToModule(course, moduleId, `${moduleId}-${quizId}`);
+
+    // Save the updated course
+    saveCourse(coursePath, course);
+
+    console.log(`✓ Created quiz "${moduleId}-${quizId}" with title "${quizTitle}"`);
+    console.log(`  - Created ${fileName}`);
+    console.log(`  - Added to module "${moduleId}" in course.yml`);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Error: ${error.message}`);
+    } else {
+      console.error('Error creating quiz:', error);
+    }
+    process.exit(1);
+  }
+}
+
 export const newCommand = new Command('new')
   .description('Scaffold new content (module, lesson, or quiz)')
   .argument('<type>', 'Content type (module, lesson, quiz)')
@@ -158,11 +247,11 @@ export const newCommand = new Command('new')
       createModule(id, title);
     } else if (type === 'lesson') {
       createLesson(id, title);
+    } else if (type === 'quiz') {
+      createQuiz(id, title);
     } else {
-      console.log('schorm new command');
-      console.log('Type:', type);
-      console.log('ID:', id);
-      console.log('Title:', title || 'Untitled');
-      console.log('TODO: Implement content scaffolding for quizzes');
+      console.error(`Error: Unknown content type "${type}"`);
+      console.error('Valid types: module, lesson, quiz');
+      process.exit(1);
     }
   });

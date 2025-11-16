@@ -166,3 +166,41 @@ export function addLessonToModule(
   // Add the lesson ID to the module's items
   module.items.push(lessonId);
 }
+
+/**
+ * Validate quiz ID format
+ */
+export function validateQuizId(quizId: string): void {
+  const validPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!validPattern.test(quizId)) {
+    throw new Error(
+      `Invalid quiz ID "${quizId}". Quiz IDs must contain only letters, numbers, hyphens, and underscores.`
+    );
+  }
+}
+
+/**
+ * Add a quiz to a module's items array
+ */
+export function addQuizToModule(
+  course: Course,
+  moduleId: string,
+  quizId: string
+): void {
+  // Find the module
+  const module = course.modules.find((m) => m.id === moduleId);
+  if (!module) {
+    throw new Error(
+      `Module "${moduleId}" not found in course.yml. Run "schorm new module ${moduleId}" first.`
+    );
+  }
+
+  // Check if quiz ID already exists in the module
+  if (module.items.includes(quizId)) {
+    // Silently skip if already present (idempotent behavior)
+    return;
+  }
+
+  // Add the quiz ID to the module's items
+  module.items.push(quizId);
+}

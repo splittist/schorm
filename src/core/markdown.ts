@@ -6,7 +6,8 @@ import MarkdownIt from 'markdown-it';
 import matter from 'gray-matter';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { Lesson, LessonMetadata } from './course-model.js';
+import type { Lesson, LessonMetadata, MediaItem } from './course-model.js';
+import { markdownMediaShortcodes, extractMediaFromTokens } from './markdown-media-shortcodes.js';
 
 export class MarkdownProcessor {
   private md: MarkdownIt;
@@ -17,6 +18,9 @@ export class MarkdownProcessor {
       linkify: true,
       typographer: true,
     });
+    
+    // Register the media shortcodes plugin
+    this.md.use(markdownMediaShortcodes);
   }
 
   render(markdown: string): string {
@@ -25,6 +29,28 @@ export class MarkdownProcessor {
 
   renderInline(markdown: string): string {
     return this.md.renderInline(markdown);
+  }
+
+  /**
+   * Parse markdown and extract media tokens
+   */
+  parseWithMedia(markdown: string): { html: string; media: MediaItem[] } {
+    const tokens = this.md.parse(markdown, {});
+    const mediaAttrs = extractMediaFromTokens(tokens);
+    
+    // Convert media attributes to MediaItem format
+    const media: MediaItem[] = mediaAttrs.map(attr => ({
+      id: attr.id,
+      type: attr.shortcode,
+      src: attr.src,
+      title: attr.title,
+      poster: attr.poster,
+    }));
+    
+    // Render to HTML
+    const html = this.md.renderer.render(tokens, this.md.options, {});
+    
+    return { html, media };
   }
 }
 
@@ -46,8 +72,9 @@ export function parseLesson(filePath: string): Lesson {
   const title = metadata.title || id;
   const module = metadata.module;
 
-  // Render markdown to HTML
-  const htmlContent = renderMarkdown(parsed.content);
+  // Render markdown to HTML and extract media
+  const processor = new MarkdownProcessor();
+  const { html: htmlContent, media } = processor.parseWithMedia(parsed.content);
 
   return {
     id,
@@ -55,6 +82,7 @@ export function parseLesson(filePath: string): Lesson {
     content: htmlContent,
     metadata,
     module,
+    media: media.length > 0 ? media : undefined,
   };
 }
 

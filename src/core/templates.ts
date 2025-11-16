@@ -18,6 +18,11 @@ export class TemplateEngine {
     this.handlebars.registerHelper('uppercase', (str: string) => {
       return str.toUpperCase();
     });
+    
+    // Register 'eq' helper for equality comparison
+    this.handlebars.registerHelper('eq', (a: unknown, b: unknown) => {
+      return a === b;
+    });
   }
 
   compile(template: string): HandlebarsTemplateDelegate {

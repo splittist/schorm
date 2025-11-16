@@ -66,7 +66,7 @@ export const buildCommand = new Command('build')
       // Step 6: Render lessons to HTML
       console.log('🖼️  Rendering lessons...');
       for (const lesson of lessons) {
-        const html = templateEngine.render(lessonTemplate, {
+        let html = templateEngine.render(lessonTemplate, {
           courseTitle: course.title,
           lesson: {
             title: lesson.title,
@@ -74,6 +74,18 @@ export const buildCommand = new Command('build')
             metadata: lesson.metadata,
           },
         });
+
+        // Replace media placeholders with rendered media blocks
+        if (lesson.media && lesson.media.length > 0) {
+          for (const mediaItem of lesson.media) {
+            const placeholderPattern = new RegExp(
+              `<schorm-media[^>]*data-schorm-id="${mediaItem.id}"[^>]*></schorm-media>`,
+              'g'
+            );
+            const mediaHtml = templateEngine.render('{{> media-block media=this}}', mediaItem as unknown as Record<string, unknown>);
+            html = html.replace(placeholderPattern, mediaHtml);
+          }
+        }
 
         const outputPath = path.join(outputDir, `${lesson.id}.html`);
         fs.writeFileSync(outputPath, html, 'utf-8');

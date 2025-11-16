@@ -128,8 +128,51 @@ Also contains functions to:
 ### 5.3 core/markdown.ts
 - Parses Markdown using markdown-it
 - Processes frontmatter using gray-matter
-- Extracts media references (images, audio, video)
+- Registers markdown-it plugins for extended functionality
+- Extracts media references from shortcodes
 - Converts content to HTML blocks for template insertion
+
+The `MarkdownProcessor` class provides:
+- `render(markdown)` - Basic markdown rendering
+- `parseWithMedia(markdown)` - Parse markdown and extract media items
+
+### 5.3.1 core/markdown-media-shortcodes.ts (v0.2+)
+
+A markdown-it plugin that processes media shortcodes:
+
+**Shortcode Syntax:**
+```markdown
+{{audio src="../media/file.mp3" title="Audio Title" id="optional-id"}}
+{{video src="../media/file.mp4" poster="../media/poster.jpg" title="Video Title"}}
+```
+
+**Pipeline:**
+1. Inline rule detects `{{audio ...}}` and `{{video ...}}` patterns
+2. Attribute parser extracts key-value pairs (supports both `"` and `'`)
+3. Validates required attributes (src is mandatory)
+4. Generates unique ID if not provided
+5. Emits `schorm_media` token with metadata
+6. Renderer creates placeholder `<schorm-media>` tag
+7. Build process replaces placeholders with rendered media blocks
+
+**Token Structure:**
+```typescript
+{
+  type: 'schorm_media',
+  meta: {
+    shortcode: 'audio' | 'video',
+    src: string,
+    title?: string,
+    poster?: string,
+    id: string
+  }
+}
+```
+
+This approach ensures:
+- Media is embedded inline where shortcodes appear
+- Media metadata is available for manifest generation
+- Template rendering happens at build time via media-block partial
 
 ### 5.4 core/templates.ts
 - Loads Handlebars templates from theme

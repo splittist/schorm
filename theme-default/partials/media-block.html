@@ -1,21 +1,21 @@
 <div class="media-block {{media.type}}">
     {{#if (eq media.type "image")}}
     <figure>
-        <img src="{{media.url}}" alt="{{media.alt}}">
-        {{#if media.caption}}
-        <figcaption>{{media.caption}}</figcaption>
+        <img src="{{media.src}}" alt="{{media.title}}">
+        {{#if media.title}}
+        <figcaption>{{media.title}}</figcaption>
         {{/if}}
     </figure>
     {{/if}}
     
     {{#if (eq media.type "video")}}
     <figure>
-        <video controls {{#if media.autoplay}}autoplay{{/if}}>
-            <source src="{{media.url}}" type="{{media.mimeType}}">
+        <video controls {{#if media.poster}}poster="{{media.poster}}"{{/if}}>
+            <source src="{{media.src}}" type="video/mp4">
             Your browser does not support the video tag.
         </video>
-        {{#if media.caption}}
-        <figcaption>{{media.caption}}</figcaption>
+        {{#if media.title}}
+        <figcaption>{{media.title}}</figcaption>
         {{/if}}
     </figure>
     {{/if}}
@@ -23,11 +23,11 @@
     {{#if (eq media.type "audio")}}
     <figure>
         <audio controls>
-            <source src="{{media.url}}" type="{{media.mimeType}}">
+            <source src="{{media.src}}" type="audio/mpeg">
             Your browser does not support the audio tag.
         </audio>
-        {{#if media.caption}}
-        <figcaption>{{media.caption}}</figcaption>
+        {{#if media.title}}
+        <figcaption>{{media.title}}</figcaption>
         {{/if}}
     </figure>
     {{/if}}

@@ -45,7 +45,7 @@ export const buildCommand = new Command('build')
       const contentDir = path.resolve('content');
       const lessonFiles = findLessons(contentDir);
       const lessons = lessonFiles.map((file) => {
-        const lesson = parseLesson(file);
+        const lesson = parseLesson(file, course);
         console.log(`   ✓ ${lesson.id}: ${lesson.title}`);
         return lesson;
       });

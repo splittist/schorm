@@ -103,14 +103,16 @@ All of this is zipped by schorm package into a SCORM-compliant bundle.
 
 ### Writing Lessons
 
-Lessons are authored in Markdown with YAML frontmatter:
+Lessons are authored in Markdown with YAML frontmatter. **All lessons must include valid frontmatter** with the following required fields:
 
 ```markdown
 ---
-id: m1-intro
-title: "Introduction to SCORM"
-module: m1
-objectives:
+id: m1-intro           # required: unique identifier (alphanumeric, hyphens, underscores)
+title: "Introduction to SCORM"  # required: lesson title
+module: m1             # required: must match a module ID in course.yml
+type: lesson           # optional: reserved for future use
+order: 1               # optional: for future ordering logic
+objectives:            # optional: learning objectives
   - Understand SCORM basics
   - Learn about SCOs
 ---
@@ -119,6 +121,21 @@ objectives:
 
 This is your lesson content.
 ```
+
+**Frontmatter Schema:**
+- `id`: Required. Must be unique across the course. Recommended format: `<module>-<slug>` (e.g., `m1-intro`)
+- `title`: Required. The lesson title displayed in the LMS
+- `module`: Required. Must reference an existing module ID defined in `course.yml`
+- `type`: Optional. If present, must be `"lesson"` (reserved for distinguishing content types in future versions)
+- `order`: Optional. Number used for future ordering features
+- Other fields (like `objectives`, `duration`) are optional and stored in lesson metadata
+
+**Validation:**
+The build process validates all lesson frontmatter and fails with clear error messages if:
+- Required fields are missing
+- The `module` references a non-existent module
+- The `id` contains invalid characters (only alphanumeric, hyphens, and underscores allowed)
+- Field types are incorrect (e.g., `order` must be a number)
 
 ### Media Shortcodes (v0.2+)
 

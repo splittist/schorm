@@ -19,12 +19,21 @@ export interface Module {
   items: string[];
 }
 
+export interface MediaItem {
+  id: string;
+  type: 'audio' | 'video';
+  src: string;
+  title?: string;
+  poster?: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
   content: string;
   metadata: LessonMetadata;
   module?: string;
+  media?: MediaItem[];
 }
 
 export interface Quiz {

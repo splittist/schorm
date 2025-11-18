@@ -100,7 +100,8 @@ More content here.
     expect(html).not.toContain('<schorm-media');
     expect(html).toContain('<div class="media-block audio">');
     expect(html).toContain('<audio controls>');
-    expect(html).toContain('src="../media/m1/sample.mp3"');
+    // Path should be normalized to media/m1/sample.mp3
+    expect(html).toContain('src="media/m1/sample.mp3"');
 
     // Verify other content is still present
     expect(html).toContain('<h1>Introduction</h1>');
@@ -178,8 +179,9 @@ That's all!
     expect(html).not.toContain('<schorm-media');
     expect(html).toContain('<div class="media-block video">');
     expect(html).toContain('<video controls');
-    expect(html).toContain('poster="../media/m1/poster.jpg"');
-    expect(html).toContain('src="../media/m1/video.mp4"');
+    // Paths should be normalized to media/m1/
+    expect(html).toContain('poster="media/m1/poster.jpg"');
+    expect(html).toContain('src="media/m1/video.mp4"');
   });
 
   it('should handle multiple media shortcodes in a single lesson', () => {

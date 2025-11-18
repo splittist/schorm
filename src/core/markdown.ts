@@ -9,6 +9,7 @@ import * as path from 'path';
 import type { Lesson, MediaItem, Course } from './course-model.js';
 import { validateLessonFrontmatter } from './course-model.js';
 import { markdownMediaShortcodes, extractMediaFromTokens } from './markdown-media-shortcodes.js';
+import { normaliseMediaPaths } from './media.js';
 
 export class MarkdownProcessor {
   private md: MarkdownIt;
@@ -79,6 +80,21 @@ export function parseLesson(filePath: string, course: Course): Lesson {
   const processor = new MarkdownProcessor();
   const { html: htmlContent, media } = processor.parseWithMedia(parsed.content);
 
+  // Normalize media paths relative to project root
+  // Find project root by going up from filePath until we find course.yml
+  let projectRoot = path.dirname(filePath);
+  while (projectRoot !== path.dirname(projectRoot)) {
+    if (fs.existsSync(path.join(projectRoot, 'course.yml'))) {
+      break;
+    }
+    projectRoot = path.dirname(projectRoot);
+  }
+
+  // Normalize all media paths
+  const normalizedMedia = media.length > 0 
+    ? normaliseMediaPaths(media, projectRoot, filePath)
+    : [];
+
   return {
     type: 'lesson',
     id: validatedFrontmatter.id,
@@ -94,7 +110,7 @@ export function parseLesson(filePath: string, course: Course): Lesson {
           .filter(([key]) => !['id', 'title', 'module', 'type', 'order', 'duration', 'objectives'].includes(key))
       ),
     },
-    media: media.length > 0 ? media : undefined,
+    media: normalizedMedia.length > 0 ? normalizedMedia : undefined,
   };
 }
 

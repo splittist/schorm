@@ -4,6 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type { MediaItem } from './course-model.js';
 
 export interface MediaFile {
   originalPath: string;
@@ -97,4 +98,102 @@ export function processMediaFiles(mediaDir: string, outputDir: string): MediaFil
   copyDirectory(mediaDir, outputMediaDir);
 
   return mediaFiles;
+}
+
+/**
+ * Normalize a media path to be relative to project root
+ * Handles relative paths like ../media/file.jpg and converts to media/file.jpg
+ * 
+ * @param rawPath - The raw path from markdown/shortcode (e.g., "../media/m1/foo.jpg")
+ * @param projectRoot - Absolute path to project root
+ * @param contentFilePath - Optional path to the content file containing the reference
+ * @returns Normalized path (e.g., "media/m1/foo.jpg")
+ * @throws Error if path escapes project root
+ */
+export function normaliseMediaPath(
+  rawPath: string,
+  projectRoot: string,
+  contentFilePath?: string
+): string {
+  // Normalize backslashes to forward slashes first
+  const normalizedRawPath = rawPath.split('\\').join('/');
+  
+  // If path already starts with media/, return as-is
+  if (normalizedRawPath.startsWith('media/')) {
+    return normalizedRawPath;
+  }
+  
+  let resolvedPath: string;
+  
+  // If path contains ../ or ./, resolve relative to content file or project root
+  if (normalizedRawPath.includes('../') || normalizedRawPath.includes('./')) {
+    if (contentFilePath) {
+      // Resolve relative to the content file's directory
+      const contentDir = path.dirname(contentFilePath);
+      resolvedPath = path.resolve(contentDir, normalizedRawPath);
+    } else {
+      // Resolve relative to project root
+      resolvedPath = path.resolve(projectRoot, normalizedRawPath);
+    }
+  } else {
+    // Assume it's relative to media directory
+    resolvedPath = path.resolve(projectRoot, 'media', normalizedRawPath);
+  }
+  
+  // Ensure the resolved path is within project root
+  const normalizedProjectRoot = path.resolve(projectRoot);
+  const normalizedResolved = path.resolve(resolvedPath);
+  
+  if (!normalizedResolved.startsWith(normalizedProjectRoot)) {
+    throw new Error(`Invalid media path: "${rawPath}" resolves outside project root`);
+  }
+  
+  // Get path relative to project root
+  let relativePath = path.relative(projectRoot, resolvedPath);
+  
+  // Normalize path separators to forward slashes for cross-platform consistency
+  relativePath = relativePath.split(path.sep).join('/');
+  
+  // Special case: if the path contains /media/ anywhere, extract from media/ onwards
+  // This handles cases like content/../media/file.jpg -> media/file.jpg
+  const mediaIndex = relativePath.indexOf('/media/');
+  if (mediaIndex !== -1) {
+    relativePath = relativePath.substring(mediaIndex + 1); // Skip the leading /
+  } else if (relativePath.startsWith('content/media/')) {
+    // Handle content/media/ -> media/
+    relativePath = relativePath.substring('content/'.length);
+  }
+  
+  return relativePath;
+}
+
+/**
+ * Normalize all media paths in a MediaItem array
+ * 
+ * @param media - Array of media items with potentially relative paths
+ * @param projectRoot - Absolute path to project root
+ * @param contentFilePath - Optional path to the content file
+ * @returns Array of media items with normalized paths
+ */
+export function normaliseMediaPaths(
+  media: MediaItem[],
+  projectRoot: string,
+  contentFilePath?: string
+): MediaItem[] {
+  return media.map(item => {
+    try {
+      return {
+        ...item,
+        src: normaliseMediaPath(item.src, projectRoot, contentFilePath),
+        poster: item.poster 
+          ? normaliseMediaPath(item.poster, projectRoot, contentFilePath)
+          : undefined,
+      };
+    } catch (error) {
+      // Re-throw with additional context
+      throw new Error(
+        `Failed to normalize media path for item "${item.id}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  });
 }

@@ -282,7 +282,22 @@ function validateMediaFilesExist(
     for (const mediaItem of sco.media) {
       // Validate main media source
       if (mediaItem.src) {
-        const mediaPath = resolveMediaPath(projectRoot, mediaItem.src);
+        // Check for path traversal attempts
+        if (mediaItem.src.includes('..') && !mediaItem.src.startsWith('media/')) {
+          errors.push({
+            code: 'E-MEDIA-INVALID-PATH',
+            message: `SCO "${sco.id}" contains invalid media path "${mediaItem.src}" (path traversal detected)`,
+            severity: 'error',
+            scoId: sco.id,
+            file: sco.filePath,
+            path: mediaItem.src,
+          });
+          continue;
+        }
+
+        const mediaPath = path.join(projectRoot, mediaItem.src);
+        
+        // Check if file exists
         if (!fs.existsSync(mediaPath)) {
           errors.push({
             code: 'E-MEDIA-MISSING-SRC',
@@ -292,12 +307,40 @@ function validateMediaFilesExist(
             file: sco.filePath,
             path: mediaItem.src,
           });
+        } else {
+          // Check if file is readable
+          try {
+            fs.accessSync(mediaPath, fs.constants.R_OK);
+          } catch (err) {
+            errors.push({
+              code: 'E-MEDIA-UNREADABLE',
+              message: `SCO "${sco.id}" references unreadable media file "${mediaItem.src}"`,
+              severity: 'error',
+              scoId: sco.id,
+              file: sco.filePath,
+              path: mediaItem.src,
+            });
+          }
         }
       }
 
       // Validate poster if present (for videos)
       if (mediaItem.poster) {
-        const posterPath = resolveMediaPath(projectRoot, mediaItem.poster);
+        // Check for path traversal attempts
+        if (mediaItem.poster.includes('..') && !mediaItem.poster.startsWith('media/')) {
+          errors.push({
+            code: 'E-MEDIA-INVALID-PATH',
+            message: `Video media "${mediaItem.id}" in SCO "${sco.id}" contains invalid poster path "${mediaItem.poster}" (path traversal detected)`,
+            severity: 'error',
+            scoId: sco.id,
+            file: sco.filePath,
+            path: mediaItem.poster,
+          });
+          continue;
+        }
+
+        const posterPath = path.join(projectRoot, mediaItem.poster);
+        
         if (!fs.existsSync(posterPath)) {
           errors.push({
             code: 'E-MEDIA-MISSING-POSTER',
@@ -307,28 +350,22 @@ function validateMediaFilesExist(
             file: sco.filePath,
             path: mediaItem.poster,
           });
+        } else {
+          // Check if poster is readable
+          try {
+            fs.accessSync(posterPath, fs.constants.R_OK);
+          } catch (err) {
+            errors.push({
+              code: 'E-MEDIA-UNREADABLE',
+              message: `Video media "${mediaItem.id}" in SCO "${sco.id}" references unreadable poster "${mediaItem.poster}"`,
+              severity: 'error',
+              scoId: sco.id,
+              file: sco.filePath,
+              path: mediaItem.poster,
+            });
+          }
         }
       }
     }
   }
-}
-
-/**
- * Resolve a media path relative to project root
- * Handles both absolute paths and relative paths (e.g., "../media/file.jpg")
- */
-function resolveMediaPath(projectRoot: string, mediaPath: string): string {
-  // If path starts with media/, it's already relative to project root
-  if (mediaPath.startsWith('media/')) {
-    return path.join(projectRoot, mediaPath);
-  }
-  
-  // If path contains ../, resolve it from content directory
-  if (mediaPath.includes('../')) {
-    // Assume it's relative to a content file
-    return path.join(projectRoot, 'content', mediaPath);
-  }
-  
-  // Default: assume it's in media directory
-  return path.join(projectRoot, 'media', mediaPath);
 }

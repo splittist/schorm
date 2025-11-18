@@ -22,7 +22,7 @@ export interface Module {
 
 export interface MediaItem {
   id: string;
-  type: 'audio' | 'video';
+  type: 'audio' | 'video' | 'image';
   src: string;
   title?: string;
   poster?: string;

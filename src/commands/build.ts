@@ -8,8 +8,8 @@ import { TemplateEngine, loadTemplate } from '../core/templates.js';
 import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
+import type { MediaFile } from '../core/media.js';
 import { 
-  createBuildError,
   wrapError,
   formatErrorsForHuman,
   formatBuildResultAsJson,
@@ -219,7 +219,7 @@ export const buildCommand = new Command('build')
       // Step 8: Copy media files
       log('📷 Processing media files...');
       const mediaDir = path.resolve('media');
-      let mediaFiles: any[] = [];
+      let mediaFiles: MediaFile[] = [];
       try {
         mediaFiles = processMediaFiles(mediaDir, outputDir);
         if (mediaFiles.length > 0) {

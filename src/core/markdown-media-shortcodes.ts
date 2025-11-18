@@ -6,7 +6,7 @@
 import type MarkdownIt from 'markdown-it';
 
 export interface MediaAttributes {
-  shortcode: 'audio' | 'video';
+  shortcode: 'audio' | 'video' | 'image';
   src: string;
   title?: string;
   poster?: string;
@@ -15,12 +15,16 @@ export interface MediaAttributes {
 
 /**
  * Generate a unique ID for a media item
+ * Uses a counter to ensure uniqueness even for items with the same filename
  */
+let mediaIdCounter = 0;
+
 function generateMediaId(shortcode: string, src: string): string {
   // Create a simple ID from the shortcode and source filename
   const filename = src.split('/').pop()?.replace(/\.[^.]+$/, '') || 'media';
   const timestamp = Date.now().toString(36);
-  return `${shortcode}-${filename}-${timestamp}`;
+  const counter = (mediaIdCounter++).toString(36);
+  return `${shortcode}-${filename}-${timestamp}${counter}`;
 }
 
 /**
@@ -185,6 +189,20 @@ export function extractMediaFromTokens(tokens: any[]): MediaAttributes[] {
     for (const token of tokenList) {
       if (token.type === 'schorm_media' && token.meta) {
         mediaItems.push(token.meta as MediaAttributes);
+      }
+      
+      // Extract markdown images
+      if (token.type === 'image') {
+        const src = token.attrGet('src');
+        const alt = token.content || token.attrGet('alt') || '';
+        if (src) {
+          mediaItems.push({
+            shortcode: 'image',
+            src,
+            title: alt,
+            id: generateMediaId('image', src),
+          });
+        }
       }
       
       // Recursively scan children

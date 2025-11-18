@@ -7,132 +7,316 @@ import { parseLesson, findLessons } from '../core/markdown.js';
 import { TemplateEngine, loadTemplate } from '../core/templates.js';
 import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
+import type { BuildError, BuildResult } from '../core/build-error.js';
+import { 
+  createBuildError,
+  wrapError,
+  formatErrorsForHuman,
+  formatBuildResultAsJson,
+  formatSuccessMessage
+} from '../core/build-error.js';
 
 export const buildCommand = new Command('build')
   .description('Build the SCORM package from source content')
   .option('-o, --output <dir>', 'Output directory', 'build')
   .option('-c, --config <file>', 'Config file path', 'schorm.config.yml')
+  .option('--json', 'Output errors in JSON format')
   .action(async (options) => {
+    const errors: BuildError[] = [];
+    const warnings: BuildError[] = [];
+    const jsonMode = options.json === true;
+    
+    // Suppress console output in JSON mode
+    const log = jsonMode ? () => {} : console.log;
+    
     try {
-      console.log('🏗️  Building SCORM package...\n');
+      log('🏗️  Building SCORM package...\n');
 
       const outputDir = path.resolve(options.output);
       const configPath = path.resolve(options.config);
       const courseYmlPath = path.resolve('course.yml');
 
       // Step 1: Load configuration
-      console.log('📋 Loading configuration...');
-      const config = loadConfig(configPath);
-      console.log(`   Theme: ${config.theme}`);
-      console.log(`   SCORM Version: ${config.scorm_version}\n`);
+      log('📋 Loading configuration...');
+      let config;
+      try {
+        config = loadConfig(configPath);
+        log(`   Theme: ${config.theme}`);
+        log(`   SCORM Version: ${config.scorm_version}\n`);
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-CONFIG-LOAD',
+          'Failed to load configuration file',
+          { file: options.config, originatingStep: 'config' }
+        ));
+        // Cannot continue without config
+        throw new Error('Configuration load failed');
+      }
 
       // Step 2: Load course model
-      console.log('📚 Loading course model...');
-      const course = loadCourse(courseYmlPath);
-      console.log(`   Course: ${course.title}`);
-      console.log(`   Modules: ${course.modules.length}\n`);
+      log('📚 Loading course model...');
+      let course;
+      try {
+        course = loadCourse(courseYmlPath);
+        log(`   Course: ${course.title}`);
+        log(`   Modules: ${course.modules.length}\n`);
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-COURSE-LOAD',
+          'Failed to load course.yml',
+          { file: 'course.yml', originatingStep: 'course' }
+        ));
+        // Cannot continue without course
+        throw new Error('Course load failed');
+      }
 
       // Step 3: Create/clear build directory
-      console.log('📁 Setting up build directory...');
-      if (fs.existsSync(outputDir)) {
-        fs.rmSync(outputDir, { recursive: true, force: true });
+      log('📁 Setting up build directory...');
+      try {
+        if (fs.existsSync(outputDir)) {
+          fs.rmSync(outputDir, { recursive: true, force: true });
+        }
+        fs.mkdirSync(outputDir, { recursive: true });
+        log(`   Output: ${outputDir}\n`);
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-BUILD-DIR-SETUP',
+          'Failed to set up build directory',
+          { file: outputDir, originatingStep: 'setup' }
+        ));
+        throw new Error('Build directory setup failed');
       }
-      fs.mkdirSync(outputDir, { recursive: true });
-      console.log(`   Output: ${outputDir}\n`);
 
       // Step 4: Parse lessons
-      console.log('📝 Parsing lessons...');
+      log('📝 Parsing lessons...');
       const contentDir = path.resolve('content');
       const lessonFiles = findLessons(contentDir);
-      const lessons = lessonFiles.map((file) => {
-        const lesson = parseLesson(file, course);
-        console.log(`   ✓ ${lesson.id}: ${lesson.title}`);
-        return lesson;
-      });
-      console.log(`   Total lessons: ${lessons.length}\n`);
+      const lessons = [];
+      
+      for (const file of lessonFiles) {
+        try {
+          const lesson = parseLesson(file, course);
+          lessons.push(lesson);
+          log(`   ✓ ${lesson.id}: ${lesson.title}`);
+        } catch (error) {
+          const relativePath = path.relative(process.cwd(), file);
+          errors.push(wrapError(
+            error,
+            'E-LESSON-PARSE',
+            'Failed to parse lesson',
+            { file: relativePath, originatingStep: 'markdown' }
+          ));
+        }
+      }
+      
+      if (lessons.length === 0 && lessonFiles.length > 0) {
+        // All lessons failed to parse
+        throw new Error('All lessons failed to parse');
+      }
+      
+      log(`   Total lessons: ${lessons.length}\n`);
 
       // Step 5: Set up template engine
-      console.log('🎨 Setting up templates...');
+      log('🎨 Setting up templates...');
       const themeDir = path.resolve(config.theme);
       const layoutsDir = path.join(themeDir, 'layouts');
       const partialsDir = path.join(themeDir, 'partials');
 
       const templateEngine = new TemplateEngine();
-      templateEngine.loadPartials(partialsDir);
+      try {
+        templateEngine.loadPartials(partialsDir);
+        log(`   Theme directory: ${themeDir}\n`);
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-TEMPLATE-LOAD',
+          'Failed to load template partials',
+          { file: partialsDir, originatingStep: 'template' }
+        ));
+      }
 
-      const lessonTemplate = loadTemplate(path.join(layoutsDir, 'lesson.html'));
-      console.log(`   Theme directory: ${themeDir}\n`);
+      let lessonTemplate;
+      try {
+        lessonTemplate = loadTemplate(path.join(layoutsDir, 'lesson.html'));
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-TEMPLATE-LOAD',
+          'Failed to load lesson template',
+          { file: path.join(layoutsDir, 'lesson.html'), originatingStep: 'template' }
+        ));
+        throw new Error('Template load failed');
+      }
 
       // Step 6: Render lessons to HTML
-      console.log('🖼️  Rendering lessons...');
+      log('🖼️  Rendering lessons...');
       for (const lesson of lessons) {
-        let html = templateEngine.render(lessonTemplate, {
-          courseTitle: course.title,
-          lesson: {
-            title: lesson.title,
-            content: lesson.content,
-            metadata: lesson.metadata,
-          },
-        });
+        try {
+          let html = templateEngine.render(lessonTemplate, {
+            courseTitle: course.title,
+            lesson: {
+              title: lesson.title,
+              content: lesson.content,
+              metadata: lesson.metadata,
+            },
+          });
 
-        // Replace media placeholders with rendered media blocks
-        if (lesson.media && lesson.media.length > 0) {
-          for (const mediaItem of lesson.media) {
-            const placeholderPattern = new RegExp(
-              `<schorm-media[^>]*data-schorm-id="${mediaItem.id}"[^>]*></schorm-media>`,
-              'g'
-            );
-            const mediaHtml = templateEngine.render('{{> media-block media=this}}', mediaItem as unknown as Record<string, unknown>);
-            html = html.replace(placeholderPattern, mediaHtml);
+          // Replace media placeholders with rendered media blocks
+          if (lesson.media && lesson.media.length > 0) {
+            for (const mediaItem of lesson.media) {
+              const placeholderPattern = new RegExp(
+                `<schorm-media[^>]*data-schorm-id="${mediaItem.id}"[^>]*></schorm-media>`,
+                'g'
+              );
+              const mediaHtml = templateEngine.render('{{> media-block media=this}}', mediaItem as unknown as Record<string, unknown>);
+              html = html.replace(placeholderPattern, mediaHtml);
+            }
           }
-        }
 
-        const outputPath = path.join(outputDir, `${lesson.id}.html`);
-        fs.writeFileSync(outputPath, html, 'utf-8');
-        console.log(`   ✓ ${lesson.id}.html`);
+          const outputPath = path.join(outputDir, `${lesson.id}.html`);
+          fs.writeFileSync(outputPath, html, 'utf-8');
+          log(`   ✓ ${lesson.id}.html`);
+        } catch (error) {
+          errors.push(wrapError(
+            error,
+            'E-TEMPLATE-RENDER',
+            'Failed to render lesson template',
+            { 
+              scoId: lesson.id,
+              moduleId: lesson.module,
+              originatingStep: 'template' 
+            }
+          ));
+        }
       }
-      console.log();
+      log();
 
       // Step 7: Copy theme assets
-      console.log('🎨 Copying theme assets...');
+      log('🎨 Copying theme assets...');
       const assetsDir = path.join(themeDir, 'assets');
       const outputAssetsDir = path.join(outputDir, 'assets');
-      if (fs.existsSync(assetsDir)) {
-        copyDirectory(assetsDir, outputAssetsDir);
-        const assetFiles = fs.readdirSync(assetsDir);
-        for (const file of assetFiles) {
-          console.log(`   ✓ assets/${file}`);
+      try {
+        if (fs.existsSync(assetsDir)) {
+          copyDirectory(assetsDir, outputAssetsDir);
+          const assetFiles = fs.readdirSync(assetsDir);
+          for (const file of assetFiles) {
+            log(`   ✓ assets/${file}`);
+          }
         }
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-ASSETS-COPY',
+          'Failed to copy theme assets',
+          { file: assetsDir, originatingStep: 'assets' }
+        ));
       }
-      console.log();
+      log();
 
       // Step 8: Copy media files
-      console.log('📷 Processing media files...');
+      log('📷 Processing media files...');
       const mediaDir = path.resolve('media');
-      const mediaFiles = processMediaFiles(mediaDir, outputDir);
-      if (mediaFiles.length > 0) {
-        console.log(`   Copied ${mediaFiles.length} media file(s)`);
-      } else {
-        console.log('   No media files found');
+      let mediaFiles: any[] = [];
+      try {
+        mediaFiles = processMediaFiles(mediaDir, outputDir);
+        if (mediaFiles.length > 0) {
+          log(`   Copied ${mediaFiles.length} media file(s)`);
+        } else {
+          log('   No media files found');
+        }
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-MEDIA-PROCESS',
+          'Failed to process media files',
+          { file: mediaDir, originatingStep: 'media' }
+        ));
       }
-      console.log();
+      log();
 
       // Step 9: Generate manifest
-      console.log('📜 Generating SCORM manifest...');
-      const manifest = buildManifestFromCourse(course, lessons, mediaFiles);
-      const manifestPath = path.join(outputDir, 'imsmanifest.xml');
-      fs.writeFileSync(manifestPath, manifest, 'utf-8');
-      console.log(`   ✓ imsmanifest.xml\n`);
+      log('📜 Generating SCORM manifest...');
+      try {
+        const manifest = buildManifestFromCourse(course, lessons, mediaFiles);
+        const manifestPath = path.join(outputDir, 'imsmanifest.xml');
+        fs.writeFileSync(manifestPath, manifest, 'utf-8');
+        log(`   ✓ imsmanifest.xml\n`);
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-MANIFEST-GENERATE',
+          'Failed to generate SCORM manifest',
+          { file: 'imsmanifest.xml', originatingStep: 'manifest' }
+        ));
+      }
 
-      // Success message
-      console.log('✅ Build completed successfully!');
-      console.log(`\nOutput directory: ${outputDir}`);
-      console.log('\nNext steps:');
-      console.log('  schorm preview    # Preview in browser');
-      console.log('  schorm validate   # Validate SCORM package');
-      console.log('  schorm package    # Create ZIP file');
+      // Check for errors
+      if (errors.length > 0) {
+        const result: BuildResult = {
+          ok: false,
+          errors,
+          warnings,
+        };
+        
+        if (jsonMode) {
+          console.log(formatBuildResultAsJson(result));
+        } else {
+          console.error(formatErrorsForHuman(errors, warnings));
+        }
+        
+        process.exit(1);
+      }
+
+      // Success!
+      const result: BuildResult = {
+        ok: true,
+        errors: [],
+        warnings,
+        summary: {
+          modules: course.modules.length,
+          lessons: lessons.length,
+          media: mediaFiles.length,
+          outputDir,
+        },
+      };
+      
+      if (jsonMode) {
+        console.log(formatBuildResultAsJson(result));
+      } else {
+        log(formatSuccessMessage(result.summary));
+        log('\nNext steps:');
+        log('  schorm preview    # Preview in browser');
+        log('  schorm validate   # Validate SCORM package');
+        log('  schorm package    # Create ZIP file');
+      }
+      
     } catch (error) {
-      console.error('❌ Build failed:', error instanceof Error ? error.message : error);
+      // Top-level error handler for unexpected errors
+      if (errors.length === 0) {
+        // Only add a generic error if we haven't collected any specific errors
+        errors.push(wrapError(
+          error,
+          'E-BUILD-FAILED',
+          'Build failed with unexpected error',
+          { originatingStep: 'build' }
+        ));
+      }
+      
+      const result: BuildResult = {
+        ok: false,
+        errors,
+        warnings,
+      };
+      
+      if (jsonMode) {
+        console.log(formatBuildResultAsJson(result));
+      } else {
+        console.error(formatErrorsForHuman(errors, warnings));
+      }
+      
       process.exit(1);
     }
   });

@@ -6,6 +6,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'yaml';
 
+// Import and re-export quiz types from quiz-model
+import type { Quiz, Question } from './quiz-model.js';
+export type { Quiz, Question };
+
 export interface Course {
   id: string;
   title: string;
@@ -36,21 +40,6 @@ export interface Lesson {
   content: string;
   metadata: LessonMetadata;
   media?: MediaItem[];
-}
-
-export interface Quiz {
-  id: string;
-  title: string;
-  module?: string;
-  questions: Question[];
-}
-
-export interface Question {
-  id: string;
-  type: 'multiple-choice' | 'true-false' | 'fill-in-blank';
-  text: string;
-  options?: string[];
-  correctAnswer: string | string[];
 }
 
 export interface CourseMetadata {

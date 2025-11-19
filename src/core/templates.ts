@@ -32,6 +32,15 @@ export class TemplateEngine {
       return array.includes(value);
     });
 
+    // Register 'jsonStringify' helper to convert objects to JSON strings
+    this.handlebars.registerHelper('jsonStringify', (obj: unknown) => {
+      try {
+        return JSON.stringify(obj);
+      } catch {
+        return '[]';
+      }
+    });
+
     // Register 'parseFillBlanks' helper to convert [[blankX]] markers to input fields
     this.handlebars.registerHelper('parseFillBlanks', (text: string, blanks: unknown) => {
       if (!text || typeof text !== 'string') {

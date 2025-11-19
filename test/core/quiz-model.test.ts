@@ -47,7 +47,7 @@ describe('Quiz Model Type Definitions', () => {
         ],
         correct: 'b',
         points: 5,
-        shuffleOptions: true,
+        shuffle_options: true,
         feedback: {
           correct: 'Well done!',
           incorrect: 'Try again.',
@@ -56,7 +56,7 @@ describe('Quiz Model Type Definitions', () => {
       };
 
       expect(question.points).toBe(5);
-      expect(question.shuffleOptions).toBe(true);
+      expect(question.shuffle_options).toBe(true);
       expect(question.feedback?.correct).toBe('Well done!');
       expect(question.tags).toContain('math');
     });

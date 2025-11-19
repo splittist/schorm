@@ -79,7 +79,7 @@ export interface SingleChoiceQuestion extends QuestionBase {
   type: 'single-choice';
   options: Option[];
   correct: string; // Option.id
-  shuffleOptions?: boolean;
+  shuffle_options?: boolean;
   scoring?: ScoringConfig; // probably ignored, but allowed
 }
 
@@ -91,7 +91,7 @@ export interface MultipleResponseQuestion extends QuestionBase {
   type: 'multiple-response';
   options: Option[];
   correct: string[]; // list of Option.id
-  shuffleOptions?: boolean;
+  shuffle_options?: boolean;
   scoring?: ScoringConfig;
 }
 

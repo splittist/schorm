@@ -25,9 +25,16 @@ This makes SCORM content:
 
 ## Project Status
 
-**Early development (v0.1)**
-This is the foundational repository setup. Core architecture, CLI scaffolding, and default theme structure are being implemented.
+**Early development (v0.3)**
+Core architecture, CLI scaffolding, default theme, and quiz scoring functionality are implemented.
 Not suitable for production use yet.
+
+### Recent Milestones
+- **v0.3**: Browser-side quiz scoring with SCORM integration
+  - Five question types supported (single-choice, multiple-response, true-false, fill-blank, matching)
+  - SCORM 2004 API integration with preview mode fallback
+  - Automatic scoring and pass/fail determination
+- **v0.1**: Initial CLI and build system
 
 ## Features (Current & Planned)
 

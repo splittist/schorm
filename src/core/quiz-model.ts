@@ -116,9 +116,9 @@ export interface FillBlankQuestion extends QuestionBase {
 
 export interface FillBlankSpec {
   id: string; // must match marker in text
-  correctAnswers: string[]; // accepted answers
-  caseSensitive?: boolean;
-  trimWhitespace?: boolean;
+  correct_answers: string[]; // accepted answers
+  case_sensitive?: boolean;
+  trim_whitespace?: boolean;
   feedback?: GlobalFeedback; // per-blank feedback, optional
 }
 

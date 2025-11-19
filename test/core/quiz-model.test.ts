@@ -151,15 +151,15 @@ describe('Quiz Model Type Definitions', () => {
         blanks: [
           {
             id: 'blank1',
-            correctAnswers: ['Paris', 'paris'],
-            caseSensitive: false,
+            correct_answers: ['Paris', 'paris'],
+            case_sensitive: false,
           },
         ],
       };
 
       expect(question.type).toBe('fill-blank');
       expect(question.blanks).toHaveLength(1);
-      expect(question.blanks[0].correctAnswers).toContain('Paris');
+      expect(question.blanks[0].correct_answers).toContain('Paris');
     });
 
     it('should accept multiple blanks', () => {
@@ -171,26 +171,26 @@ describe('Quiz Model Type Definitions', () => {
         blanks: [
           {
             id: 'creator',
-            correctAnswers: ['Brendan Eich'],
-            caseSensitive: true,
+            correct_answers: ['Brendan Eich'],
+            case_sensitive: true,
           },
           {
             id: 'year',
-            correctAnswers: ['1995'],
-            trimWhitespace: true,
+            correct_answers: ['1995'],
+            trim_whitespace: true,
           },
         ],
       };
 
       expect(question.blanks).toHaveLength(2);
-      expect(question.blanks[0].caseSensitive).toBe(true);
-      expect(question.blanks[1].trimWhitespace).toBe(true);
+      expect(question.blanks[0].case_sensitive).toBe(true);
+      expect(question.blanks[1].trim_whitespace).toBe(true);
     });
 
     it('should accept per-blank feedback', () => {
       const blankSpec: FillBlankSpec = {
         id: 'blank1',
-        correctAnswers: ['answer'],
+        correct_answers: ['answer'],
         feedback: {
           correct: 'Great!',
           incorrect: 'Try again.',
@@ -286,7 +286,7 @@ describe('Quiz Model Type Definitions', () => {
             blanks: [
               {
                 id: 'where',
-                correctAnswers: ['browser', 'Browser'],
+                correct_answers: ['browser', 'Browser'],
               },
             ],
           },

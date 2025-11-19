@@ -173,6 +173,53 @@ main {
   font-size: 1rem;
 }
 
+/* Fill-blank question styles */
+.fill-blank-question {
+  margin: var(--spacing-unit) 0;
+}
+
+.fill-blank-text {
+  line-height: 2;
+  font-size: 1.1rem;
+}
+
+.fill-blank-input {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--primary-color);
+  border-radius: 2px;
+  font-size: 1rem;
+  min-width: 120px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.fill-blank-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background-color: #f8fafc;
+}
+
+.fill-blank-input.correct {
+  border-color: var(--success-color);
+  background-color: #d1fae5;
+}
+
+.fill-blank-input.incorrect {
+  border-color: var(--error-color);
+  background-color: #fee2e2;
+}
+
+.option.correct {
+  border-color: var(--success-color);
+  background-color: #d1fae5;
+}
+
+.option.incorrect {
+  border-color: var(--error-color);
+  background-color: #fee2e2;
+}
+
 .quiz-actions {
   text-align: center;
   margin-top: calc(var(--spacing-unit) * 2);

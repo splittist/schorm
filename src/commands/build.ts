@@ -15,6 +15,7 @@ import {
   formatErrorsForHuman,
   formatBuildResultAsJson,
   formatSuccessMessage,
+  calculateDirectorySize
 } from '../core/build-error.js';
 
 export const buildCommand = new Command('build')
@@ -312,6 +313,7 @@ export const buildCommand = new Command('build')
       }
 
       // Success!
+      const outputSize = calculateDirectorySize(outputDir);
       const result: BuildResult = {
         ok: true,
         errors: [],
@@ -321,6 +323,7 @@ export const buildCommand = new Command('build')
           lessons: lessons.length,
           media: mediaFiles.length,
           outputDir,
+          outputSize,
         },
       };
 

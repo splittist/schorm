@@ -554,4 +554,135 @@ Test lesson with nested media.
       expect(hrefMatch).not.toContain('\\');
     }
   });
+
+  it('should include output size in build summary', () => {
+    const projectName = 'summary-test';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a lesson
+    const lessonDir = path.join(projectPath, 'content', 'm1');
+    fs.mkdirSync(lessonDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lessonDir, 'intro.md'),
+      `---
+id: m1-intro
+title: "Introduction"
+module: m1
+---
+
+# Introduction
+
+This is a test lesson for summary output.
+`
+    );
+
+    // Create a media file
+    fs.writeFileSync(
+      path.join(projectPath, 'media', 'sample.jpg'),
+      'sample media content'
+    );
+
+    // Update course.yml
+    const courseConfig = {
+      id: projectName,
+      title: projectName,
+      modules: [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: ['m1-intro'],
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Run build and capture output
+    const output = execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Verify summary output contains expected information
+    expect(output).toContain('Build completed successfully');
+    expect(output).toContain('Modules: 1');
+    expect(output).toContain('Lessons: 1');
+    expect(output).toContain('Media files: 1');
+    expect(output).toContain('Output size:');
+    
+    // Verify output size format (should be in KB or B)
+    expect(output).toMatch(/Output size: \d+(\.\d+)? (B|KB|MB|GB)/);
+  });
+
+  it('should include output size in JSON build summary', () => {
+    const projectName = 'json-summary-test';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a lesson
+    const lessonDir = path.join(projectPath, 'content', 'm1');
+    fs.mkdirSync(lessonDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lessonDir, 'intro.md'),
+      `---
+id: m1-intro
+title: "Introduction"
+module: m1
+---
+
+# Introduction
+
+Test lesson.
+`
+    );
+
+    // Update course.yml
+    const courseConfig = {
+      id: projectName,
+      title: projectName,
+      modules: [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: ['m1-intro'],
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Run build with --json flag and capture output
+    const output = execSync(`${CLI_PATH} build --json`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Parse JSON output
+    const result = JSON.parse(output);
+    
+    // Verify JSON structure
+    expect(result.ok).toBe(true);
+    expect(result.summary).toBeDefined();
+    expect(result.summary.modules).toBe(1);
+    expect(result.summary.lessons).toBe(1);
+    expect(result.summary.media).toBe(0);
+    expect(result.summary.outputSize).toBeDefined();
+    expect(typeof result.summary.outputSize).toBe('number');
+    expect(result.summary.outputSize).toBeGreaterThan(0);
+  });
 });

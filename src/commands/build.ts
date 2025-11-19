@@ -2,14 +2,14 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from '../core/config.js';
-import { loadCourse } from '../core/course-model.js';
+import { loadCourse, findQuizzes, loadQuiz } from '../core/course-model.js';
 import { parseLesson, findLessons } from '../core/markdown.js';
 import { TemplateEngine, loadTemplate } from '../core/templates.js';
 import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
-import type { Lesson } from '../core/course-model.js';
+import type { Lesson, Quiz } from '../core/course-model.js';
 import {
   wrapError,
   formatErrorsForHuman,
@@ -121,6 +121,30 @@ export const buildCommand = new Command('build')
 
       log(`   Total lessons: ${lessons.length}\n`);
 
+      // Step 4.5: Parse quizzes
+      log('📝 Parsing quizzes...');
+      const quizzesDir = path.resolve('quizzes');
+      const quizFiles = findQuizzes(quizzesDir);
+      const quizzes: Quiz[] = [];
+
+      for (const file of quizFiles) {
+        try {
+          const quiz = loadQuiz(file);
+          quizzes.push(quiz);
+          log(`   ✓ ${quiz.id}: ${quiz.title}`);
+        } catch (error) {
+          const relativePath = path.relative(process.cwd(), file);
+          errors.push(
+            wrapError(error, 'E-QUIZ-PARSE', 'Failed to parse quiz', {
+              file: relativePath,
+              originatingStep: 'quiz',
+            })
+          );
+        }
+      }
+
+      log(`   Total quizzes: ${quizzes.length}\n`);
+
       // Step 5: Set up template engine
       log('🎨 Setting up templates...');
       const themeDir = path.resolve(config.theme);
@@ -151,6 +175,22 @@ export const buildCommand = new Command('build')
           })
         );
         throw new Error('Template load failed');
+      }
+
+      let quizTemplate;
+      try {
+        quizTemplate = loadTemplate(path.join(layoutsDir, 'quiz.html'));
+      } catch (error) {
+        errors.push(
+          wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load quiz template', {
+            file: path.join(layoutsDir, 'quiz.html'),
+            originatingStep: 'template',
+          })
+        );
+        // Quiz template is optional - only throw if there are quizzes
+        if (quizzes.length > 0) {
+          throw new Error('Quiz template load failed but quizzes exist');
+        }
       }
 
       // Step 6: Render lessons to HTML
@@ -195,6 +235,35 @@ export const buildCommand = new Command('build')
         }
       }
       log();
+
+      // Step 6.5: Render quizzes to HTML
+      if (quizzes.length > 0) {
+        log('🖼️  Rendering quizzes...');
+        for (const quiz of quizzes) {
+          try {
+            if (!quizTemplate) {
+              throw new Error('Quiz template not loaded');
+            }
+            const html = templateEngine.render(quizTemplate, {
+              courseTitle: course.title,
+              quiz: quiz,
+            });
+
+            const outputPath = path.join(outputDir, `${quiz.id}.html`);
+            fs.writeFileSync(outputPath, html, 'utf-8');
+            log(`   ✓ ${quiz.id}.html`);
+          } catch (error) {
+            errors.push(
+              wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render quiz template', {
+                scoId: quiz.id,
+                moduleId: quiz.module,
+                originatingStep: 'template',
+              })
+            );
+          }
+        }
+        log();
+      }
 
       // Step 6.5: Generate index.html landing page
       log('🏠 Generating index page...');

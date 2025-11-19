@@ -569,40 +569,15 @@ Test lesson with nested media.
     const lessonDir = path.join(projectPath, 'content', 'm1');
     fs.mkdirSync(lessonDir, { recursive: true });
     fs.writeFileSync(
-      path.join(lessonDir, 'intro.md'),
-      `---
-id: m1-intro
-title: "Introduction"
-module: m1
----
-
-# Introduction
-
-This is a test lesson for summary output.
-`
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
     );
 
     // Create a media file
+    fs.mkdirSync(path.join(projectPath, 'media'), { recursive: true });
     fs.writeFileSync(
       path.join(projectPath, 'media', 'sample.jpg'),
       'sample media content'
-    );
-
-    // Update course.yml
-    const courseConfig = {
-      id: projectName,
-      title: projectName,
-      modules: [
-        {
-          id: 'm1',
-          title: 'Module 1',
-          items: ['m1-intro'],
-        },
-      ],
-    };
-    fs.writeFileSync(
-      path.join(projectPath, 'course.yml'),
-      yaml.stringify(courseConfig)
     );
 
     // Run build and capture output
@@ -613,8 +588,8 @@ This is a test lesson for summary output.
 
     // Verify summary output contains expected information
     expect(output).toContain('Build completed successfully');
-    expect(output).toContain('Modules: 1');
-    expect(output).toContain('Lessons: 1');
+    expect(output).toContain('Modules: 2');
+    expect(output).toContain('Lessons: 3');
     expect(output).toContain('Media files: 1');
     expect(output).toContain('Output size:');
     
@@ -811,5 +786,96 @@ Content.
     expect(manifest).toContain('identifier="RES-index"');
     expect(manifest).toContain('href="index.html"');
     expect(manifest).toContain('adlcp:scormType="asset"');
+  });
+
+  it('should build a course with a single-choice quiz', () => {
+    const projectName = 'quiz-course';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a quiz with single-choice questions
+    const quizzesDir = path.join(projectPath, 'quizzes');
+    fs.mkdirSync(quizzesDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(quizzesDir, 'm1-quiz.yml'),
+      `id: m1-quiz
+module: m1
+title: "Module 1 Quiz"
+questions:
+  - id: q1
+    type: single-choice
+    prompt: "Which planet is known as the Red Planet?"
+    points: 1
+    shuffle_options: true
+    options:
+      - id: a
+        text: "Earth"
+        feedback: "Earth is sometimes called the Blue Planet."
+      - id: b
+        text: "Mars"
+        feedback: "Correct – Mars appears red due to iron oxide on its surface."
+      - id: c
+        text: "Jupiter"
+        feedback: "Jupiter is a gas giant."
+    correct: b
+  - id: q2
+    type: single-choice
+    prompt: "What is 2 + 2?"
+    points: 1
+    options:
+      - id: a
+        text: "3"
+      - id: b
+        text: "4"
+        feedback: "Correct!"
+      - id: c
+        text: "5"
+    correct: b
+`
+    );
+
+    // Update course.yml to include quiz
+    const courseYmlPath = path.join(projectPath, 'course.yml');
+    const courseData = yaml.parse(fs.readFileSync(courseYmlPath, 'utf-8'));
+    
+    // Ensure modules array exists and has at least one module
+    if (!courseData.modules || courseData.modules.length === 0) {
+      courseData.modules = [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: [],
+        },
+      ];
+    }
+    
+    courseData.modules[0].items.push('m1-quiz');
+    fs.writeFileSync(courseYmlPath, yaml.stringify(courseData));
+
+    // Build the course
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify quiz HTML was generated
+    const quizHtmlPath = path.join(projectPath, 'build', 'm1-quiz.html');
+    expect(fs.existsSync(quizHtmlPath)).toBe(true);
+
+    // Verify quiz HTML content
+    const quizHtml = fs.readFileSync(quizHtmlPath, 'utf-8');
+    expect(quizHtml).toContain('Module 1 Quiz');
+    expect(quizHtml).toContain('Which planet is known as the Red Planet?');
+    expect(quizHtml).toContain('Mars');
+    expect(quizHtml).toContain('What is 2 + 2?');
+    expect(quizHtml).toContain('type="radio"');
+    
+    // Verify quiz is marked as single-choice type
+    expect(quizHtml).toContain('data-question-type="single-choice"');
   });
 });

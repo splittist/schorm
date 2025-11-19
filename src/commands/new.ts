@@ -190,17 +190,25 @@ function createQuiz(quizPath: string, title?: string): void {
 
     // Create the quiz file content
     const quizContent = `id: ${moduleId}-${quizId}
+module: ${moduleId}
 title: "${quizTitle}"
 questions:
   - id: q1
-    type: multiple-choice
-    text: "Your question text here"
+    type: single-choice
+    prompt: "Your question text here"
+    points: 1
     options:
-      - "Option A"
-      - "Option B"
-      - "Option C"
-      - "Option D"
-    correctAnswer: "Option A"
+      - id: a
+        text: "Option A"
+        feedback: "Correct!"
+      - id: b
+        text: "Option B"
+      - id: c
+        text: "Option C"
+      - id: d
+        text: "Option D"
+    correct: a
+    shuffle_options: true
 `;
 
     // Ensure quizzes directory exists

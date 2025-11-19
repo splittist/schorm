@@ -22,8 +22,19 @@
             
             <form id="quiz-form" class="quiz-form">
                 {{#each quiz.questions}}
-                <div class="question" data-question-id="{{id}}">
-                    <h3 class="question-text">{{text}}</h3>
+                <div class="question" data-question-id="{{id}}" data-question-type="{{type}}">
+                    <h3 class="question-text">{{prompt}}</h3>
+                    
+                    {{#if (eq type "single-choice")}}
+                    <div class="options">
+                        {{#each options}}
+                        <label class="option">
+                            <input type="radio" name="question-{{../id}}" value="{{id}}" data-correct="{{#if (eq id ../correct)}}true{{else}}false{{/if}}">
+                            <span>{{text}}</span>
+                        </label>
+                        {{/each}}
+                    </div>
+                    {{/if}}
                     
                     {{#if (eq type "multiple-choice")}}
                     <div class="options">
@@ -39,11 +50,11 @@
                     {{#if (eq type "true-false")}}
                     <div class="options">
                         <label class="option">
-                            <input type="radio" name="question-{{id}}" value="true">
+                            <input type="radio" name="question-{{id}}" value="true" data-correct="{{#if correct}}true{{else}}false{{/if}}">
                             <span>True</span>
                         </label>
                         <label class="option">
-                            <input type="radio" name="question-{{id}}" value="false">
+                            <input type="radio" name="question-{{id}}" value="false" data-correct="{{#unless correct}}true{{else}}false{{/unless}}">
                             <span>False</span>
                         </label>
                     </div>

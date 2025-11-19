@@ -65,6 +65,30 @@
                         <p class="fill-blank-text">{{{parseFillBlanks text blanks}}}</p>
                     </div>
                     {{/if}}
+                    
+                    {{#if (eq type "matching")}}
+                    <div class="matching-question">
+                        <div class="matching-pairs">
+                            {{#each premises}}
+                            <div class="matching-row" data-premise-id="{{id}}">
+                                <div class="premise">
+                                    <span class="premise-text">{{text}}</span>
+                                </div>
+                                <div class="response-selector">
+                                    <select name="matching-{{../id}}-{{id}}" class="matching-select" data-premise-id="{{id}}">
+                                        <option value="">-- Select --</option>
+                                        {{#each ../responses}}
+                                        <option value="{{id}}">{{text}}</option>
+                                        {{/each}}
+                                    </select>
+                                </div>
+                            </div>
+                            {{/each}}
+                        </div>
+                        <!-- Store correct pairs as data attribute for grading -->
+                        <input type="hidden" class="correct-pairs-data" value="{{jsonStringify correct_pairs}}" data-question-id="{{id}}">
+                    </div>
+                    {{/if}}
                 </div>
                 {{/each}}
                 

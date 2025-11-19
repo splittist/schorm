@@ -130,7 +130,7 @@ export interface MatchingQuestion extends QuestionBase {
   type: 'matching';
   premises: MatchingPremise[];
   responses: MatchingResponse[];
-  correctPairs: MatchingPair[]; // mapping premise.id → response.id
+  correct_pairs: MatchingPair[]; // mapping premise.id → response.id
   scoring?: ScoringConfig;
 }
 

@@ -217,7 +217,7 @@ describe('Quiz Model Type Definitions', () => {
           { id: 'r2', text: 'Berlin' },
           { id: 'r3', text: 'Rome' },
         ],
-        correctPairs: [
+        correct_pairs: [
           { premise: 'p1', response: 'r1' },
           { premise: 'p2', response: 'r2' },
           { premise: 'p3', response: 'r3' },
@@ -227,7 +227,7 @@ describe('Quiz Model Type Definitions', () => {
       expect(question.type).toBe('matching');
       expect(question.premises).toHaveLength(3);
       expect(question.responses).toHaveLength(3);
-      expect(question.correctPairs).toHaveLength(3);
+      expect(question.correct_pairs).toHaveLength(3);
     });
 
     it('should support asymmetric matching (more responses than premises)', () => {
@@ -244,14 +244,14 @@ describe('Quiz Model Type Definitions', () => {
           { id: 'r2', text: 'Styling language' },
           { id: 'r3', text: 'Programming language' },
         ],
-        correctPairs: [
+        correct_pairs: [
           { premise: 'p1', response: 'r1' },
           { premise: 'p2', response: 'r2' },
         ],
       };
 
       expect(question.premises.length).toBeLessThan(question.responses.length);
-      expect(question.correctPairs).toHaveLength(2);
+      expect(question.correct_pairs).toHaveLength(2);
     });
   });
 

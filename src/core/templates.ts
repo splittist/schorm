@@ -31,6 +31,61 @@ export class TemplateEngine {
       }
       return array.includes(value);
     });
+
+    // Register 'parseFillBlanks' helper to convert [[blankX]] markers to input fields
+    this.handlebars.registerHelper('parseFillBlanks', (text: string, blanks: unknown) => {
+      if (!text || typeof text !== 'string') {
+        return text;
+      }
+
+      // Convert blanks to a map for quick lookup
+      const blanksArray = Array.isArray(blanks) ? blanks : [];
+      const blanksMap = new Map();
+      for (const blank of blanksArray) {
+        if (blank && typeof blank === 'object' && 'id' in blank) {
+          blanksMap.set(blank.id, blank);
+        }
+      }
+
+      // Replace [[blankX]] with input fields
+      let result = text;
+      const pattern = /\[\[([^\]]+)\]\]/g;
+      let match;
+      const replacements: Array<{ original: string; replacement: string }> = [];
+
+      while ((match = pattern.exec(text)) !== null) {
+        const blankId = match[1];
+        const blank = blanksMap.get(blankId);
+
+        if (blank) {
+          const correctAnswers = Array.isArray(blank.correct_answers)
+            ? blank.correct_answers
+            : [];
+          const caseSensitive = blank.case_sensitive === true;
+          const trimWhitespace = blank.trim_whitespace !== false; // default true
+
+          const inputHtml = `<input type="text" 
+            class="fill-blank-input" 
+            data-blank-id="${blankId}" 
+            data-correct-answers="${correctAnswers.join('|||')}" 
+            data-case-sensitive="${caseSensitive}" 
+            data-trim-whitespace="${trimWhitespace}" 
+            aria-label="Fill in the blank for ${blankId}">`;
+
+          replacements.push({
+            original: match[0],
+            replacement: inputHtml,
+          });
+        }
+      }
+
+      // Apply all replacements
+      for (const { original, replacement } of replacements) {
+        result = result.replace(original, replacement);
+      }
+
+      return new this.handlebars.SafeString(result);
+    });
   }
 
   compile(template: string): HandlebarsTemplateDelegate {

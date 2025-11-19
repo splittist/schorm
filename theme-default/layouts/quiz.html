@@ -60,8 +60,10 @@
                     </div>
                     {{/if}}
                     
-                    {{#if (eq type "fill-in-blank")}}
-                    <input type="text" name="question-{{id}}" class="fill-in-blank">
+                    {{#if (eq type "fill-blank")}}
+                    <div class="fill-blank-question">
+                        <p class="fill-blank-text">{{{parseFillBlanks text blanks}}}</p>
+                    </div>
                     {{/if}}
                 </div>
                 {{/each}}

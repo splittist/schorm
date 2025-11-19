@@ -878,4 +878,113 @@ questions:
     // Verify quiz is marked as single-choice type
     expect(quizHtml).toContain('data-question-type="single-choice"');
   });
+
+  it('should build a course with a multiple-response quiz', () => {
+    const projectName = 'multiple-response-course';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a quiz with multiple-response questions
+    const quizzesDir = path.join(projectPath, 'quizzes');
+    fs.mkdirSync(quizzesDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(quizzesDir, 'm1-quiz.yml'),
+      `id: m1-quiz
+module: m1
+title: "Multiple Response Quiz"
+questions:
+  - id: q1
+    type: multiple-response
+    prompt: "Which of the following are prime numbers?"
+    points: 2
+    shuffle_options: true
+    options:
+      - id: a
+        text: "2"
+      - id: b
+        text: "4"
+      - id: c
+        text: "5"
+      - id: d
+        text: "9"
+    correct:
+      - a
+      - c
+    scoring:
+      mode: partial
+      partial:
+        perCorrect: 1
+        penaltyPerIncorrect: 0.5
+  - id: q2
+    type: multiple-response
+    prompt: "Select all programming languages"
+    points: 3
+    options:
+      - id: a
+        text: "Python"
+      - id: b
+        text: "HTML"
+      - id: c
+        text: "JavaScript"
+      - id: d
+        text: "CSS"
+    correct:
+      - a
+      - c
+`
+    );
+
+    // Update course.yml to include quiz
+    const courseYmlPath = path.join(projectPath, 'course.yml');
+    const courseData = yaml.parse(fs.readFileSync(courseYmlPath, 'utf-8'));
+    
+    // Ensure modules array exists and has at least one module
+    if (!courseData.modules || courseData.modules.length === 0) {
+      courseData.modules = [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: [],
+        },
+      ];
+    }
+    
+    courseData.modules[0].items.push('m1-quiz');
+    fs.writeFileSync(courseYmlPath, yaml.stringify(courseData));
+
+    // Build the course
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify quiz HTML was generated
+    const quizHtmlPath = path.join(projectPath, 'build', 'm1-quiz.html');
+    expect(fs.existsSync(quizHtmlPath)).toBe(true);
+
+    // Verify quiz HTML content
+    const quizHtml = fs.readFileSync(quizHtmlPath, 'utf-8');
+    expect(quizHtml).toContain('Multiple Response Quiz');
+    expect(quizHtml).toContain('Which of the following are prime numbers?');
+    expect(quizHtml).toContain('Select all programming languages');
+    
+    // Verify checkboxes are used instead of radio buttons
+    expect(quizHtml).toContain('type="checkbox"');
+    expect(quizHtml).not.toContain('type="radio"');
+    
+    // Verify quiz is marked as multiple-response type
+    expect(quizHtml).toContain('data-question-type="multiple-response"');
+    
+    // Verify correct answers are marked properly
+    // For q1, options 'a' (2) and 'c' (5) should be marked as correct
+    expect(quizHtml).toMatch(/value="a"[^>]*data-correct="true"/);
+    expect(quizHtml).toMatch(/value="c"[^>]*data-correct="true"/);
+    expect(quizHtml).toMatch(/value="b"[^>]*data-correct="false"/);
+    expect(quizHtml).toMatch(/value="d"[^>]*data-correct="false"/);
+  });
 });

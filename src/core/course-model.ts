@@ -131,11 +131,7 @@ export function validateModuleId(moduleId: string): void {
 /**
  * Add a new module to the course
  */
-export function addModule(
-  course: Course,
-  moduleId: string,
-  moduleTitle: string
-): void {
+export function addModule(course: Course, moduleId: string, moduleTitle: string): void {
   // Validate module ID format
   validateModuleId(moduleId);
 
@@ -163,11 +159,7 @@ export function validateLessonId(lessonId: string): void {
 /**
  * Add a lesson to a module's items array
  */
-export function addLessonToModule(
-  course: Course,
-  moduleId: string,
-  lessonId: string
-): void {
+export function addLessonToModule(course: Course, moduleId: string, lessonId: string): void {
   appendItemToModule(course, moduleId, lessonId);
 }
 
@@ -181,11 +173,7 @@ export function validateQuizId(quizId: string): void {
 /**
  * Add a quiz to a module's items array
  */
-export function addQuizToModule(
-  course: Course,
-  moduleId: string,
-  quizId: string
-): void {
+export function addQuizToModule(course: Course, moduleId: string, quizId: string): void {
   appendItemToModule(course, moduleId, quizId);
 }
 
@@ -205,11 +193,7 @@ export function ensureModuleExists(course: Course, moduleId: string): Module {
 /**
  * Generic function to append an item to a module's items array
  */
-export function appendItemToModule(
-  course: Course,
-  moduleId: string,
-  itemId: string
-): void {
+export function appendItemToModule(course: Course, moduleId: string, itemId: string): void {
   const module = ensureModuleExists(course, moduleId);
 
   // Check if item ID already exists in the module
@@ -232,7 +216,7 @@ export function appendItemToModule(
 export function titleFromId(id: string): string {
   // Replace hyphens and underscores with spaces
   const words = id.replace(/[-_]/g, ' ');
-  
+
   // Capitalize first letter of each word
   return words
     .split(' ')
@@ -243,7 +227,7 @@ export function titleFromId(id: string): string {
 /**
  * Validate lesson frontmatter against schema
  * Throws an error with a clear message if validation fails
- * 
+ *
  * @param frontmatter - Raw frontmatter data from gray-matter
  * @param course - Course object to validate module reference
  * @param filePath - Path to the lesson file for error messages
@@ -256,47 +240,33 @@ export function validateLessonFrontmatter(
 ): LessonFrontmatter {
   // Validate 'id' field
   if (frontmatter.id === undefined || frontmatter.id === null) {
-    throw new Error(
-      `${filePath}: frontmatter missing required field "id"`
-    );
+    throw new Error(`${filePath}: frontmatter missing required field "id"`);
   }
   if (typeof frontmatter.id !== 'string' || frontmatter.id.trim() === '') {
-    throw new Error(
-      `${filePath}: frontmatter "id" must be a non-empty string`
-    );
+    throw new Error(`${filePath}: frontmatter "id" must be a non-empty string`);
   }
-  
+
   // Validate ID format
   try {
     validateLessonId(frontmatter.id);
   } catch (error) {
-    throw new Error(
-      `${filePath}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new Error(`${filePath}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   // Validate 'title' field
   if (frontmatter.title === undefined || frontmatter.title === null) {
-    throw new Error(
-      `${filePath}: frontmatter missing required field "title"`
-    );
+    throw new Error(`${filePath}: frontmatter missing required field "title"`);
   }
   if (typeof frontmatter.title !== 'string' || frontmatter.title.trim() === '') {
-    throw new Error(
-      `${filePath}: frontmatter "title" must be a non-empty string`
-    );
+    throw new Error(`${filePath}: frontmatter "title" must be a non-empty string`);
   }
 
   // Validate 'module' field
   if (frontmatter.module === undefined || frontmatter.module === null) {
-    throw new Error(
-      `${filePath}: frontmatter missing required field "module"`
-    );
+    throw new Error(`${filePath}: frontmatter missing required field "module"`);
   }
   if (typeof frontmatter.module !== 'string' || frontmatter.module.trim() === '') {
-    throw new Error(
-      `${filePath}: frontmatter "module" must be a non-empty string`
-    );
+    throw new Error(`${filePath}: frontmatter "module" must be a non-empty string`);
   }
 
   // Check that module exists in course
@@ -310,9 +280,7 @@ export function validateLessonFrontmatter(
   // Validate 'type' field if present
   if (frontmatter.type !== undefined) {
     if (typeof frontmatter.type !== 'string') {
-      throw new Error(
-        `${filePath}: frontmatter "type" must be a string`
-      );
+      throw new Error(`${filePath}: frontmatter "type" must be a string`);
     }
     if (frontmatter.type !== 'lesson') {
       throw new Error(
@@ -324,9 +292,7 @@ export function validateLessonFrontmatter(
   // Validate 'order' field if present
   if (frontmatter.order !== undefined) {
     if (typeof frontmatter.order !== 'number') {
-      throw new Error(
-        `${filePath}: frontmatter "order" must be a number`
-      );
+      throw new Error(`${filePath}: frontmatter "order" must be a number`);
     }
   }
 

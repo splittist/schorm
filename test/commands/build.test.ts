@@ -554,4 +554,131 @@ Test lesson with nested media.
       expect(hrefMatch).not.toContain('\\');
     }
   });
+
+  it('should generate index.html landing page with module and lesson links', () => {
+    const projectName = 'index-page-test';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create multiple modules and lessons
+    const m1Dir = path.join(projectPath, 'content', 'm1');
+    const m2Dir = path.join(projectPath, 'content', 'm2');
+    fs.mkdirSync(m1Dir, { recursive: true });
+    fs.mkdirSync(m2Dir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(m1Dir, 'lesson1.md'),
+      `---
+id: m1-lesson1
+title: "Module 1 Lesson 1"
+module: m1
+---
+
+# Lesson 1
+Content.
+`
+    );
+
+    fs.writeFileSync(
+      path.join(m1Dir, 'lesson2.md'),
+      `---
+id: m1-lesson2
+title: "Module 1 Lesson 2"
+module: m1
+---
+
+# Lesson 2
+Content.
+`
+    );
+
+    fs.writeFileSync(
+      path.join(m2Dir, 'lesson1.md'),
+      `---
+id: m2-lesson1
+title: "Module 2 Lesson 1"
+module: m2
+---
+
+# Lesson 1
+Content.
+`
+    );
+
+    // Update course.yml with description
+    const courseConfig = {
+      id: projectName,
+      title: 'Test Course Title',
+      metadata: {
+        description: 'This is a test course description',
+      },
+      modules: [
+        {
+          id: 'm1',
+          title: 'First Module',
+          items: ['m1-lesson1', 'm1-lesson2'],
+        },
+        {
+          id: 'm2',
+          title: 'Second Module',
+          items: ['m2-lesson1'],
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Run build
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    const buildDir = path.join(projectPath, 'build');
+
+    // Verify index.html exists
+    expect(fs.existsSync(path.join(buildDir, 'index.html'))).toBe(true);
+
+    // Verify index.html content
+    const indexHtml = fs.readFileSync(
+      path.join(buildDir, 'index.html'),
+      'utf-8'
+    );
+
+    // Should contain course title
+    expect(indexHtml).toContain('Test Course Title');
+    
+    // Should contain course description
+    expect(indexHtml).toContain('This is a test course description');
+
+    // Should contain module titles
+    expect(indexHtml).toContain('First Module');
+    expect(indexHtml).toContain('Second Module');
+
+    // Should contain lesson links
+    expect(indexHtml).toContain('href="m1-lesson1.html"');
+    expect(indexHtml).toContain('href="m1-lesson2.html"');
+    expect(indexHtml).toContain('href="m2-lesson1.html"');
+
+    // Should contain lesson titles
+    expect(indexHtml).toContain('Module 1 Lesson 1');
+    expect(indexHtml).toContain('Module 1 Lesson 2');
+    expect(indexHtml).toContain('Module 2 Lesson 1');
+
+    // Verify index.html is in manifest as an asset
+    const manifest = fs.readFileSync(
+      path.join(buildDir, 'imsmanifest.xml'),
+      'utf-8'
+    );
+    expect(manifest).toContain('identifier="RES-index"');
+    expect(manifest).toContain('href="index.html"');
+    expect(manifest).toContain('adlcp:scormType="asset"');
+  });
 });

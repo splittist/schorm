@@ -20,7 +20,7 @@ export class MarkdownProcessor {
       linkify: true,
       typographer: true,
     });
-    
+
     // Register the media shortcodes plugin
     this.md.use(markdownMediaShortcodes);
   }
@@ -39,19 +39,19 @@ export class MarkdownProcessor {
   parseWithMedia(markdown: string): { html: string; media: MediaItem[] } {
     const tokens = this.md.parse(markdown, {});
     const mediaAttrs = extractMediaFromTokens(tokens);
-    
+
     // Convert media attributes to MediaItem format
-    const media: MediaItem[] = mediaAttrs.map(attr => ({
+    const media: MediaItem[] = mediaAttrs.map((attr) => ({
       id: attr.id,
       type: attr.shortcode,
       src: attr.src,
       title: attr.title,
       poster: attr.poster,
     }));
-    
+
     // Render to HTML
     const html = this.md.renderer.render(tokens, this.md.options, {});
-    
+
     return { html, media };
   }
 }
@@ -70,11 +70,7 @@ export function parseLesson(filePath: string, course: Course): Lesson {
   const parsed = matter(content);
 
   // Validate frontmatter against schema
-  const validatedFrontmatter = validateLessonFrontmatter(
-    parsed.data,
-    course,
-    filePath
-  );
+  const validatedFrontmatter = validateLessonFrontmatter(parsed.data, course, filePath);
 
   // Render markdown to HTML and extract media
   const processor = new MarkdownProcessor();
@@ -91,9 +87,7 @@ export function parseLesson(filePath: string, course: Course): Lesson {
   }
 
   // Normalize all media paths
-  const normalizedMedia = media.length > 0 
-    ? normaliseMediaPaths(media, projectRoot, filePath)
-    : [];
+  const normalizedMedia = media.length > 0 ? normaliseMediaPaths(media, projectRoot, filePath) : [];
 
   return {
     type: 'lesson',
@@ -106,8 +100,10 @@ export function parseLesson(filePath: string, course: Course): Lesson {
       objectives: validatedFrontmatter.objectives,
       // Include any extra frontmatter fields in metadata
       ...Object.fromEntries(
-        Object.entries(validatedFrontmatter)
-          .filter(([key]) => !['id', 'title', 'module', 'type', 'order', 'duration', 'objectives'].includes(key))
+        Object.entries(validatedFrontmatter).filter(
+          ([key]) =>
+            !['id', 'title', 'module', 'type', 'order', 'duration', 'objectives'].includes(key)
+        )
       ),
     },
     media: normalizedMedia.length > 0 ? normalizedMedia : undefined,

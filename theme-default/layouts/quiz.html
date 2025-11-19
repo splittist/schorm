@@ -36,12 +36,12 @@
                     </div>
                     {{/if}}
                     
-                    {{#if (eq type "multiple-choice")}}
+                    {{#if (eq type "multiple-response")}}
                     <div class="options">
                         {{#each options}}
                         <label class="option">
-                            <input type="radio" name="question-{{../id}}" value="{{@index}}">
-                            <span>{{this}}</span>
+                            <input type="checkbox" name="question-{{../id}}" value="{{id}}" data-correct="{{#if (contains ../correct id)}}true{{else}}false{{/if}}">
+                            <span>{{text}}</span>
                         </label>
                         {{/each}}
                     </div>

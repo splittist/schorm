@@ -23,6 +23,14 @@ export class TemplateEngine {
     this.handlebars.registerHelper('eq', (a: unknown, b: unknown) => {
       return a === b;
     });
+
+    // Register 'contains' helper to check if array contains value
+    this.handlebars.registerHelper('contains', (array: unknown, value: unknown) => {
+      if (!Array.isArray(array)) {
+        return false;
+      }
+      return array.includes(value);
+    });
   }
 
   compile(template: string): HandlebarsTemplateDelegate {

@@ -9,7 +9,8 @@ import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
-import { 
+import type { Lesson } from '../core/course-model.js';
+import {
   wrapError,
   formatErrorsForHuman,
   formatBuildResultAsJson,
@@ -26,10 +27,10 @@ export const buildCommand = new Command('build')
     const errors: BuildError[] = [];
     const warnings: BuildError[] = [];
     const jsonMode = options.json === true;
-    
+
     // Suppress console output in JSON mode
     const log = jsonMode ? () => {} : console.log;
-    
+
     try {
       log('🏗️  Building SCORM package...\n');
 
@@ -45,12 +46,12 @@ export const buildCommand = new Command('build')
         log(`   Theme: ${config.theme}`);
         log(`   SCORM Version: ${config.scorm_version}\n`);
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-CONFIG-LOAD',
-          'Failed to load configuration file',
-          { file: options.config, originatingStep: 'config' }
-        ));
+        errors.push(
+          wrapError(error, 'E-CONFIG-LOAD', 'Failed to load configuration file', {
+            file: options.config,
+            originatingStep: 'config',
+          })
+        );
         // Cannot continue without config
         throw new Error('Configuration load failed');
       }
@@ -63,12 +64,12 @@ export const buildCommand = new Command('build')
         log(`   Course: ${course.title}`);
         log(`   Modules: ${course.modules.length}\n`);
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-COURSE-LOAD',
-          'Failed to load course.yml',
-          { file: 'course.yml', originatingStep: 'course' }
-        ));
+        errors.push(
+          wrapError(error, 'E-COURSE-LOAD', 'Failed to load course.yml', {
+            file: 'course.yml',
+            originatingStep: 'course',
+          })
+        );
         // Cannot continue without course
         throw new Error('Course load failed');
       }
@@ -82,12 +83,12 @@ export const buildCommand = new Command('build')
         fs.mkdirSync(outputDir, { recursive: true });
         log(`   Output: ${outputDir}\n`);
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-BUILD-DIR-SETUP',
-          'Failed to set up build directory',
-          { file: outputDir, originatingStep: 'setup' }
-        ));
+        errors.push(
+          wrapError(error, 'E-BUILD-DIR-SETUP', 'Failed to set up build directory', {
+            file: outputDir,
+            originatingStep: 'setup',
+          })
+        );
         throw new Error('Build directory setup failed');
       }
 
@@ -95,8 +96,8 @@ export const buildCommand = new Command('build')
       log('📝 Parsing lessons...');
       const contentDir = path.resolve('content');
       const lessonFiles = findLessons(contentDir);
-      const lessons = [];
-      
+      const lessons: Lesson[] = [];
+
       for (const file of lessonFiles) {
         try {
           const lesson = parseLesson(file, course);
@@ -104,20 +105,20 @@ export const buildCommand = new Command('build')
           log(`   ✓ ${lesson.id}: ${lesson.title}`);
         } catch (error) {
           const relativePath = path.relative(process.cwd(), file);
-          errors.push(wrapError(
-            error,
-            'E-LESSON-PARSE',
-            'Failed to parse lesson',
-            { file: relativePath, originatingStep: 'markdown' }
-          ));
+          errors.push(
+            wrapError(error, 'E-LESSON-PARSE', 'Failed to parse lesson', {
+              file: relativePath,
+              originatingStep: 'markdown',
+            })
+          );
         }
       }
-      
+
       if (lessons.length === 0 && lessonFiles.length > 0) {
         // All lessons failed to parse
         throw new Error('All lessons failed to parse');
       }
-      
+
       log(`   Total lessons: ${lessons.length}\n`);
 
       // Step 5: Set up template engine
@@ -131,24 +132,24 @@ export const buildCommand = new Command('build')
         templateEngine.loadPartials(partialsDir);
         log(`   Theme directory: ${themeDir}\n`);
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-TEMPLATE-LOAD',
-          'Failed to load template partials',
-          { file: partialsDir, originatingStep: 'template' }
-        ));
+        errors.push(
+          wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load template partials', {
+            file: partialsDir,
+            originatingStep: 'template',
+          })
+        );
       }
 
       let lessonTemplate;
       try {
         lessonTemplate = loadTemplate(path.join(layoutsDir, 'lesson.html'));
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-TEMPLATE-LOAD',
-          'Failed to load lesson template',
-          { file: path.join(layoutsDir, 'lesson.html'), originatingStep: 'template' }
-        ));
+        errors.push(
+          wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load lesson template', {
+            file: path.join(layoutsDir, 'lesson.html'),
+            originatingStep: 'template',
+          })
+        );
         throw new Error('Template load failed');
       }
 
@@ -172,7 +173,10 @@ export const buildCommand = new Command('build')
                 `<schorm-media[^>]*data-schorm-id="${mediaItem.id}"[^>]*></schorm-media>`,
                 'g'
               );
-              const mediaHtml = templateEngine.render('{{> media-block media=this}}', mediaItem as unknown as Record<string, unknown>);
+              const mediaHtml = templateEngine.render(
+                '{{> media-block media=this}}',
+                mediaItem as unknown as Record<string, unknown>
+              );
               html = html.replace(placeholderPattern, mediaHtml);
             }
           }
@@ -181,19 +185,56 @@ export const buildCommand = new Command('build')
           fs.writeFileSync(outputPath, html, 'utf-8');
           log(`   ✓ ${lesson.id}.html`);
         } catch (error) {
-          errors.push(wrapError(
-            error,
-            'E-TEMPLATE-RENDER',
-            'Failed to render lesson template',
-            { 
+          errors.push(
+            wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render lesson template', {
               scoId: lesson.id,
               moduleId: lesson.module,
-              originatingStep: 'template' 
-            }
-          ));
+              originatingStep: 'template',
+            })
+          );
         }
       }
       log();
+
+      // Step 6.5: Generate index.html landing page
+      log('🏠 Generating index page...');
+      try {
+        const indexTemplate = loadTemplate(path.join(layoutsDir, 'index.html'));
+
+        // Build modules data with their items (lessons)
+        const modulesWithItems = course.modules.map((module) => {
+          const items = module.items
+            .map((itemId) => lessons.find((l) => l.id === itemId))
+            .filter((item) => item !== undefined)
+            .map((lesson) => ({
+              id: lesson!.id,
+              title: lesson!.title,
+            }));
+
+          return {
+            id: module.id,
+            title: module.title,
+            items,
+          };
+        });
+
+        const indexHtml = templateEngine.render(indexTemplate, {
+          courseTitle: course.title,
+          courseDescription: course.metadata?.description,
+          modules: modulesWithItems,
+        });
+
+        const indexPath = path.join(outputDir, 'index.html');
+        fs.writeFileSync(indexPath, indexHtml, 'utf-8');
+        log(`   ✓ index.html\n`);
+      } catch (error) {
+        errors.push(
+          wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render index page', {
+            file: 'index.html',
+            originatingStep: 'template',
+          })
+        );
+      }
 
       // Step 7: Copy theme assets
       log('🎨 Copying theme assets...');
@@ -208,12 +249,12 @@ export const buildCommand = new Command('build')
           }
         }
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-ASSETS-COPY',
-          'Failed to copy theme assets',
-          { file: assetsDir, originatingStep: 'assets' }
-        ));
+        errors.push(
+          wrapError(error, 'E-ASSETS-COPY', 'Failed to copy theme assets', {
+            file: assetsDir,
+            originatingStep: 'assets',
+          })
+        );
       }
       log();
 
@@ -229,12 +270,12 @@ export const buildCommand = new Command('build')
           log('   No media files found');
         }
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-MEDIA-PROCESS',
-          'Failed to process media files',
-          { file: mediaDir, originatingStep: 'media' }
-        ));
+        errors.push(
+          wrapError(error, 'E-MEDIA-PROCESS', 'Failed to process media files', {
+            file: mediaDir,
+            originatingStep: 'media',
+          })
+        );
       }
       log();
 
@@ -246,12 +287,12 @@ export const buildCommand = new Command('build')
         fs.writeFileSync(manifestPath, manifest, 'utf-8');
         log(`   ✓ imsmanifest.xml\n`);
       } catch (error) {
-        errors.push(wrapError(
-          error,
-          'E-MANIFEST-GENERATE',
-          'Failed to generate SCORM manifest',
-          { file: 'imsmanifest.xml', originatingStep: 'manifest' }
-        ));
+        errors.push(
+          wrapError(error, 'E-MANIFEST-GENERATE', 'Failed to generate SCORM manifest', {
+            file: 'imsmanifest.xml',
+            originatingStep: 'manifest',
+          })
+        );
       }
 
       // Check for errors
@@ -261,13 +302,13 @@ export const buildCommand = new Command('build')
           errors,
           warnings,
         };
-        
+
         if (jsonMode) {
           console.log(formatBuildResultAsJson(result));
         } else {
           console.error(formatErrorsForHuman(errors, warnings));
         }
-        
+
         process.exit(1);
       }
 
@@ -285,7 +326,7 @@ export const buildCommand = new Command('build')
           outputSize,
         },
       };
-      
+
       if (jsonMode) {
         console.log(formatBuildResultAsJson(result));
       } else {
@@ -295,31 +336,29 @@ export const buildCommand = new Command('build')
         log('  schorm validate   # Validate SCORM package');
         log('  schorm package    # Create ZIP file');
       }
-      
     } catch (error) {
       // Top-level error handler for unexpected errors
       if (errors.length === 0) {
         // Only add a generic error if we haven't collected any specific errors
-        errors.push(wrapError(
-          error,
-          'E-BUILD-FAILED',
-          'Build failed with unexpected error',
-          { originatingStep: 'build' }
-        ));
+        errors.push(
+          wrapError(error, 'E-BUILD-FAILED', 'Build failed with unexpected error', {
+            originatingStep: 'build',
+          })
+        );
       }
-      
+
       const result: BuildResult = {
         ok: false,
         errors,
         warnings,
       };
-      
+
       if (jsonMode) {
         console.log(formatBuildResultAsJson(result));
       } else {
         console.error(formatErrorsForHuman(errors, warnings));
       }
-      
+
       process.exit(1);
     }
   });

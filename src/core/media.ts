@@ -103,7 +103,7 @@ export function processMediaFiles(mediaDir: string, outputDir: string): MediaFil
 /**
  * Normalize a media path to be relative to project root
  * Handles relative paths like ../media/file.jpg and converts to media/file.jpg
- * 
+ *
  * @param rawPath - The raw path from markdown/shortcode (e.g., "../media/m1/foo.jpg")
  * @param projectRoot - Absolute path to project root
  * @param contentFilePath - Optional path to the content file containing the reference
@@ -117,14 +117,14 @@ export function normaliseMediaPath(
 ): string {
   // Normalize backslashes to forward slashes first
   const normalizedRawPath = rawPath.split('\\').join('/');
-  
+
   // If path already starts with media/, return as-is
   if (normalizedRawPath.startsWith('media/')) {
     return normalizedRawPath;
   }
-  
+
   let resolvedPath: string;
-  
+
   // If path contains ../ or ./, resolve relative to content file or project root
   if (normalizedRawPath.includes('../') || normalizedRawPath.includes('./')) {
     if (contentFilePath) {
@@ -139,21 +139,21 @@ export function normaliseMediaPath(
     // Assume it's relative to media directory
     resolvedPath = path.resolve(projectRoot, 'media', normalizedRawPath);
   }
-  
+
   // Ensure the resolved path is within project root
   const normalizedProjectRoot = path.resolve(projectRoot);
   const normalizedResolved = path.resolve(resolvedPath);
-  
+
   if (!normalizedResolved.startsWith(normalizedProjectRoot)) {
     throw new Error(`Invalid media path: "${rawPath}" resolves outside project root`);
   }
-  
+
   // Get path relative to project root
   let relativePath = path.relative(projectRoot, resolvedPath);
-  
+
   // Normalize path separators to forward slashes for cross-platform consistency
   relativePath = relativePath.split(path.sep).join('/');
-  
+
   // Special case: if the path contains /media/ anywhere, extract from media/ onwards
   // This handles cases like content/../media/file.jpg -> media/file.jpg
   const mediaIndex = relativePath.indexOf('/media/');
@@ -163,13 +163,13 @@ export function normaliseMediaPath(
     // Handle content/media/ -> media/
     relativePath = relativePath.substring('content/'.length);
   }
-  
+
   return relativePath;
 }
 
 /**
  * Normalize all media paths in a MediaItem array
- * 
+ *
  * @param media - Array of media items with potentially relative paths
  * @param projectRoot - Absolute path to project root
  * @param contentFilePath - Optional path to the content file
@@ -180,12 +180,12 @@ export function normaliseMediaPaths(
   projectRoot: string,
   contentFilePath?: string
 ): MediaItem[] {
-  return media.map(item => {
+  return media.map((item) => {
     try {
       return {
         ...item,
         src: normaliseMediaPath(item.src, projectRoot, contentFilePath),
-        poster: item.poster 
+        poster: item.poster
           ? normaliseMediaPath(item.poster, projectRoot, contentFilePath)
           : undefined,
       };

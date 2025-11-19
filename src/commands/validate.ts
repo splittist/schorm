@@ -34,7 +34,9 @@ export const validateCommand = new Command('validate')
         if (result.ok) {
           console.log('✅ Validation passed! No errors found.');
           if (result.warnings.length > 0) {
-            console.log(`\n${result.warnings.length} warning(s) - these are informational and do not prevent building.`);
+            console.log(
+              `\n${result.warnings.length} warning(s) - these are informational and do not prevent building.`
+            );
           }
         } else {
           console.log(`\n❌ Validation failed with ${result.errors.length} error(s).`);
@@ -55,7 +57,7 @@ export const validateCommand = new Command('validate')
 function printIssue(issue: ValidationIssue): void {
   const prefix = issue.severity === 'error' ? '  ❌' : '  ⚠️ ';
   console.log(`${prefix} [${issue.code}] ${issue.message}`);
-  
+
   // Print additional context if available
   const details: string[] = [];
   if (issue.file) details.push(`file: ${issue.file}`);
@@ -63,7 +65,7 @@ function printIssue(issue: ValidationIssue): void {
   if (issue.scoId) details.push(`sco: ${issue.scoId}`);
   if (issue.itemId) details.push(`item: ${issue.itemId}`);
   if (issue.path) details.push(`path: ${issue.path}`);
-  
+
   if (details.length > 0) {
     console.log(`     ${details.join(', ')}`);
   }

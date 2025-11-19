@@ -154,6 +154,15 @@ export function buildManifestFromCourse(
   const resources: Resource[] = [];
   const commonFiles = ['assets/schorm-runtime.js', 'assets/styles.css'];
 
+  // Add index.html as a resource (not a SCO, just webcontent)
+  resources.push({
+    identifier: 'RES-index',
+    type: 'webcontent',
+    scormType: 'asset',
+    href: 'index.html',
+    files: ['index.html', ...commonFiles],
+  });
+
   for (const lesson of lessons) {
     const files = [`${lesson.id}.html`, ...commonFiles];
 

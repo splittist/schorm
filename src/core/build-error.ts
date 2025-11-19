@@ -61,7 +61,7 @@ export function formatErrorsForHuman(errors: BuildError[], warnings: BuildError[
 
   if (errors.length > 0) {
     lines.push(`Build failed with ${errors.length} error(s):\n`);
-    
+
     for (const error of errors) {
       lines.push(`[${error.code}] ${error.file || '(unknown file)'}`);
       lines.push(`  ${error.message}`);
@@ -77,7 +77,7 @@ export function formatErrorsForHuman(errors: BuildError[], warnings: BuildError[
 
   if (warnings.length > 0) {
     lines.push(`\n${warnings.length} warning(s):\n`);
-    
+
     for (const warning of warnings) {
       lines.push(`[${warning.code}] ${warning.file || '(unknown file)'}`);
       lines.push(`  ${warning.message}`);
@@ -101,7 +101,7 @@ export function formatBuildResultAsJson(result: BuildResult): string {
 export function formatSuccessMessage(summary: BuildResult['summary']): string {
   const lines: string[] = [];
   lines.push('✅ Build completed successfully!\n');
-  
+
   if (summary) {
     if (summary.modules !== undefined) {
       lines.push(`   Modules: ${summary.modules}`);
@@ -119,7 +119,7 @@ export function formatSuccessMessage(summary: BuildResult['summary']): string {
       lines.push(`   Output: ${summary.outputDir}`);
     }
   }
-  
+
   return lines.join('\n');
 }
 
@@ -183,10 +183,6 @@ export function wrapError(
   }
 ): BuildError {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  
-  return createBuildError(
-    code,
-    `${defaultMessage}: ${errorMessage}`,
-    options
-  );
+
+  return createBuildError(code, `${defaultMessage}: ${errorMessage}`, options);
 }

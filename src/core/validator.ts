@@ -67,7 +67,6 @@ export async function validateProject(projectRoot: string): Promise<ValidationRe
 
     // Validate media files exist
     validateMediaFilesExist(projectRoot, scos, errors);
-
   } catch (error) {
     errors.push({
       code: 'E-VALIDATION-ERROR',
@@ -155,7 +154,7 @@ function validateModulesAndItems(
   errors: ValidationIssue[],
   warnings: ValidationIssue[]
 ): void {
-  const scoMap = new Map(scos.map(sco => [sco.id, sco]));
+  const scoMap = new Map(scos.map((sco) => [sco.id, sco]));
   const referencedScoIds = new Set<string>();
 
   // Validate each module
@@ -209,7 +208,7 @@ function validateModulesAndItems(
   // Validate SCO module references
   for (const sco of scos) {
     if (sco.module) {
-      const moduleExists = course.modules.some(m => m.id === sco.module);
+      const moduleExists = course.modules.some((m) => m.id === sco.module);
       if (!moduleExists) {
         errors.push({
           code: 'E-SCO-UNKNOWN-MODULE',
@@ -254,7 +253,7 @@ function validateScoIdsUnique(scos: SCO[], errors: ValidationIssue[]): void {
   // Check for duplicates
   for (const [id, scoList] of idMap.entries()) {
     if (scoList.length > 1) {
-      const fileList = scoList.map(s => `"${s.filePath}"`).join(' and ');
+      const fileList = scoList.map((s) => `"${s.filePath}"`).join(' and ');
       errors.push({
         code: 'E-SCO-DUP-ID',
         message: `SCO id "${id}" is used by multiple files: ${fileList}`,
@@ -296,7 +295,7 @@ function validateMediaFilesExist(
         }
 
         const mediaPath = path.join(projectRoot, mediaItem.src);
-        
+
         // Check if file exists
         if (!fs.existsSync(mediaPath)) {
           errors.push({
@@ -340,7 +339,7 @@ function validateMediaFilesExist(
         }
 
         const posterPath = path.join(projectRoot, mediaItem.poster);
-        
+
         if (!fs.existsSync(posterPath)) {
           errors.push({
             code: 'E-MEDIA-MISSING-POSTER',

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{courseTitle}}</title>
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body class="index-page">
+    {{> header}}
+    
+    <main class="index-content">
+        <header class="course-header">
+            <h1>{{courseTitle}}</h1>
+            {{#if courseDescription}}
+            <p class="course-description">{{courseDescription}}</p>
+            {{/if}}
+        </header>
+        
+        <nav class="course-navigation">
+            {{#each modules}}
+            <section class="module">
+                <h2>{{this.title}}</h2>
+                {{#if this.items}}
+                <ul class="module-items">
+                    {{#each this.items}}
+                    <li>
+                        <a href="{{this.id}}.html">{{this.title}}</a>
+                    </li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+            </section>
+            {{/each}}
+        </nav>
+    </main>
+    
+    {{> footer}}
+    
+    <script src="assets/schorm-runtime.js"></script>
+</body>
+</html>

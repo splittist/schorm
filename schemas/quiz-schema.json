@@ -1,0 +1,304 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "schorm Quiz",
+  "type": "object",
+  "required": ["id", "module", "title", "questions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "module": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/singleChoiceQuestion" },
+          { "$ref": "#/$defs/multipleResponseQuestion" },
+          { "$ref": "#/$defs/trueFalseQuestion" },
+          { "$ref": "#/$defs/fillBlankQuestion" },
+          { "$ref": "#/$defs/matchingQuestion" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "questionBase": {
+      "type": "object",
+      "required": ["id", "type", "prompt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "points": {
+          "type": "number",
+          "minimum": 0
+        },
+        "feedback": {
+          "$ref": "#/$defs/globalFeedback"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "globalFeedback": {
+      "type": "object",
+      "properties": {
+        "correct": { "type": "string" },
+        "incorrect": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "option": {
+      "type": "object",
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 },
+        "feedback": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "scoringConfig": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["all-or-nothing", "partial"]
+        },
+        "partial": {
+          "type": "object",
+          "properties": {
+            "perCorrect": { "type": "number" },
+            "penaltyPerIncorrect": { "type": "number" },
+            "minScore": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "singleChoiceQuestion": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/questionBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "single-choice" },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/option" }
+            },
+            "correct": {
+              "type": "string",
+              "minLength": 1
+            },
+            "shuffle_options": {
+              "type": "boolean"
+            },
+            "scoring": {
+              "$ref": "#/$defs/scoringConfig"
+            }
+          },
+          "required": ["type", "options", "correct"],
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "multipleResponseQuestion": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/questionBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "multiple-response" },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/option" }
+            },
+            "correct": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "shuffle_options": {
+              "type": "boolean"
+            },
+            "scoring": {
+              "$ref": "#/$defs/scoringConfig"
+            }
+          },
+          "required": ["type", "options", "correct"],
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "trueFalseQuestion": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/questionBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "true-false" },
+            "correct": {
+              "type": "boolean"
+            }
+          },
+          "required": ["type", "correct"],
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "fillBlankQuestion": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/questionBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "fill-blank" },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "blanks": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/fillBlankSpec" }
+            }
+          },
+          "required": ["type", "text", "blanks"],
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "fillBlankSpec": {
+      "type": "object",
+      "required": ["id", "correct_answers"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correct_answers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "case_sensitive": {
+          "type": "boolean"
+        },
+        "trim_whitespace": {
+          "type": "boolean"
+        },
+        "feedback": {
+          "$ref": "#/$defs/globalFeedback"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "matchingQuestion": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/questionBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "matching" },
+            "premises": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/matchingPremise" }
+            },
+            "responses": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/matchingResponse" }
+            },
+            "correct_pairs": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/matchingPair" }
+            },
+            "scoring": {
+              "$ref": "#/$defs/scoringConfig"
+            }
+          },
+          "required": ["type", "premises", "responses", "correct_pairs"],
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "matchingPremise": {
+      "type": "object",
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+
+    "matchingResponse": {
+      "type": "object",
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+
+    "matchingPair": {
+      "type": "object",
+      "required": ["premise", "response"],
+      "properties": {
+        "premise": { "type": "string", "minLength": 1 },
+        "response": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

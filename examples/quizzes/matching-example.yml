@@ -1,0 +1,107 @@
+id: matching-quiz
+module: web-technologies
+title: Web Technologies Matching Quiz
+
+questions:
+  - id: q1
+    type: matching
+    prompt: Match each programming language to its primary use case.
+    points: 3
+    premises:
+      - id: p1
+        text: JavaScript
+      - id: p2
+        text: Python
+      - id: p3
+        text: SQL
+    responses:
+      - id: r1
+        text: Web interactivity and client-side scripting
+      - id: r2
+        text: Data science and machine learning
+      - id: r3
+        text: Database queries
+      - id: r4
+        text: Mobile app development
+    correct_pairs:
+      - premise: p1
+        response: r1
+      - premise: p2
+        response: r2
+      - premise: p3
+        response: r3
+    scoring:
+      mode: partial
+      partial:
+        perCorrect: 1
+        penaltyPerIncorrect: 0
+        minScore: 0
+    feedback:
+      correct: Perfect! You matched all languages correctly.
+      incorrect: Review the primary use cases for these languages.
+
+  - id: q2
+    type: matching
+    prompt: Match each country to its capital city.
+    points: 4
+    premises:
+      - id: p1
+        text: France
+      - id: p2
+        text: Germany
+      - id: p3
+        text: Italy
+      - id: p4
+        text: Spain
+    responses:
+      - id: r1
+        text: Paris
+      - id: r2
+        text: Berlin
+      - id: r3
+        text: Rome
+      - id: r4
+        text: Madrid
+      - id: r5
+        text: London
+    correct_pairs:
+      - premise: p1
+        response: r1
+      - premise: p2
+        response: r2
+      - premise: p3
+        response: r3
+      - premise: p4
+        response: r4
+    tags:
+      - geography
+      - europe
+
+  - id: q3
+    type: matching
+    prompt: Match HTML elements to their semantic purpose.
+    points: 3
+    premises:
+      - id: p1
+        text: <nav>
+      - id: p2
+        text: <article>
+      - id: p3
+        text: <aside>
+    responses:
+      - id: r1
+        text: Navigation links
+      - id: r2
+        text: Self-contained content
+      - id: r3
+        text: Tangentially related content
+    correct_pairs:
+      - premise: p1
+        response: r1
+      - premise: p2
+        response: r2
+      - premise: p3
+        response: r3
+    tags:
+      - html
+      - semantics

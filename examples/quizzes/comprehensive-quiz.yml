@@ -1,0 +1,125 @@
+id: comprehensive-quiz
+module: web-development-101
+title: Comprehensive Web Development Quiz
+
+questions:
+  # Single-choice question
+  - id: q1
+    type: single-choice
+    prompt: What does HTML stand for?
+    points: 1
+    options:
+      - id: a
+        text: Hyper Text Markup Language
+        feedback: Correct!
+      - id: b
+        text: Home Tool Markup Language
+      - id: c
+        text: Hyperlinks and Text Markup Language
+      - id: d
+        text: Hyper Transfer Markup Language
+    correct: a
+    shuffle_options: true
+
+  # Multiple-response question
+  - id: q2
+    type: multiple-response
+    prompt: Which of these are CSS layout methods? (Select all that apply)
+    points: 2
+    options:
+      - id: a
+        text: Flexbox
+      - id: b
+        text: Grid
+      - id: c
+        text: Float
+      - id: d
+        text: Console
+    correct:
+      - a
+      - b
+      - c
+    scoring:
+      mode: partial
+      partial:
+        perCorrect: 0.67
+        penaltyPerIncorrect: -0.33
+        minScore: 0
+
+  # True/False question
+  - id: q3
+    type: true-false
+    prompt: CSS Grid can only be used for two-dimensional layouts.
+    correct: false
+    points: 1
+    feedback:
+      correct: Right! Grid can also be used for one-dimensional layouts, though Flexbox is often simpler for that.
+      incorrect: Grid is flexible and can work with both 1D and 2D layouts.
+
+  # Fill-blank question
+  - id: q4
+    type: fill-blank
+    prompt: Complete the CSS property name.
+    text: To change the background color in CSS, use the [[property]] property.
+    points: 1
+    blanks:
+      - id: property
+        correct_answers:
+          - background-color
+          - background
+        case_sensitive: false
+        trim_whitespace: true
+
+  # Matching question
+  - id: q5
+    type: matching
+    prompt: Match each HTTP status code to its meaning.
+    points: 3
+    premises:
+      - id: p1
+        text: "200"
+      - id: p2
+        text: "404"
+      - id: p3
+        text: "500"
+    responses:
+      - id: r1
+        text: OK - Success
+      - id: r2
+        text: Not Found
+      - id: r3
+        text: Internal Server Error
+      - id: r4
+        text: Unauthorized
+    correct_pairs:
+      - premise: p1
+        response: r1
+      - premise: p2
+        response: r2
+      - premise: p3
+        response: r3
+    scoring:
+      mode: all-or-nothing
+
+  # Another single-choice with tags
+  - id: q6
+    type: single-choice
+    prompt: Which JavaScript keyword is used to declare a variable that cannot be reassigned?
+    points: 1
+    options:
+      - id: a
+        text: var
+      - id: b
+        text: let
+      - id: c
+        text: const
+      - id: d
+        text: static
+    correct: c
+    tags:
+      - javascript
+      - variables
+      - es6
+    feedback:
+      correct: Excellent! const creates a read-only reference.
+      incorrect: Think about ES6 variable declarations and immutability.

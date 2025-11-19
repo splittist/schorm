@@ -1,0 +1,46 @@
+id: true-false-quiz
+module: programming-fundamentals
+title: Programming Concepts - True or False
+
+questions:
+  - id: q1
+    type: true-false
+    prompt: JavaScript is a compiled language.
+    correct: false
+    points: 1
+    feedback:
+      correct: Correct! JavaScript is an interpreted language, not compiled.
+      incorrect: Actually, JavaScript is interpreted at runtime, not compiled ahead of time.
+
+  - id: q2
+    type: true-false
+    prompt: TypeScript is a superset of JavaScript that adds static typing.
+    correct: true
+    points: 1
+    feedback:
+      correct: Yes! TypeScript extends JavaScript with static type checking.
+      incorrect: TypeScript is indeed a typed superset of JavaScript.
+
+  - id: q3
+    type: true-false
+    prompt: The statement 'null === undefined' evaluates to true in JavaScript.
+    correct: false
+    points: 1
+    feedback:
+      correct: Correct! While they are loosely equal (==), they are NOT strictly equal (===).
+      incorrect: Remember, === checks both value AND type. null and undefined are different types.
+    tags:
+      - javascript
+      - equality
+
+  - id: q4
+    type: true-false
+    prompt: In JavaScript, arrays are a type of object.
+    correct: true
+    points: 1
+    feedback:
+      correct: Exactly! Arrays in JavaScript are special objects with numeric indices.
+      incorrect: Arrays are indeed objects in JavaScript. Try typeof [] to see!
+    tags:
+      - javascript
+      - data-types

@@ -1,0 +1,43 @@
+id: single-choice-quiz
+module: javascript-basics
+title: JavaScript Basics - Single Choice Quiz
+
+questions:
+  - id: q1
+    type: single-choice
+    prompt: What is the correct syntax to output "Hello World" in JavaScript?
+    points: 1
+    options:
+      - id: a
+        text: echo("Hello World")
+      - id: b
+        text: console.log("Hello World")
+        feedback: Correct! console.log() is the standard way to output to the console.
+      - id: c
+        text: print("Hello World")
+      - id: d
+        text: System.out.println("Hello World")
+    correct: b
+    shuffle_options: true
+    feedback:
+      correct: Well done! You know your JavaScript syntax.
+      incorrect: Try again. Think about the console methods in JavaScript.
+
+  - id: q2
+    type: single-choice
+    prompt: Which data type is NOT a primitive type in JavaScript?
+    points: 2
+    options:
+      - id: a
+        text: string
+      - id: b
+        text: boolean
+      - id: c
+        text: object
+        feedback: Correct! Object is a complex type, not a primitive.
+      - id: d
+        text: number
+    correct: c
+    tags:
+      - data-types
+      - fundamentals

@@ -1,0 +1,60 @@
+id: multiple-response-quiz
+module: web-development
+title: HTML & CSS Knowledge Check
+
+questions:
+  - id: q1
+    type: multiple-response
+    prompt: Which of the following are valid HTML5 semantic elements? (Select all that apply)
+    points: 3
+    options:
+      - id: a
+        text: <article>
+      - id: b
+        text: <section>
+      - id: c
+        text: <div>
+        feedback: While <div> is a valid HTML element, it's not semantic.
+      - id: d
+        text: <header>
+      - id: e
+        text: <content>
+        feedback: <content> is not a valid HTML5 element.
+    correct:
+      - a
+      - b
+      - d
+    shuffle_options: true
+    scoring:
+      mode: partial
+      partial:
+        perCorrect: 1
+        penaltyPerIncorrect: -0.5
+        minScore: 0
+    feedback:
+      correct: Excellent! You know your HTML5 semantic elements.
+      incorrect: Review the HTML5 semantic elements specification.
+
+  - id: q2
+    type: multiple-response
+    prompt: Which CSS properties affect the box model dimensions? (Select all that apply)
+    points: 2
+    options:
+      - id: a
+        text: margin
+      - id: b
+        text: padding
+      - id: c
+        text: border
+      - id: d
+        text: color
+      - id: e
+        text: width
+    correct:
+      - a
+      - b
+      - c
+      - e
+    tags:
+      - css
+      - box-model

@@ -1,0 +1,73 @@
+id: fill-blank-quiz
+module: geography
+title: World Geography Fill-in-the-Blank
+
+questions:
+  - id: q1
+    type: fill-blank
+    prompt: Complete the following sentence about European capitals.
+    text: The capital of France is [[capital1]].
+    points: 1
+    blanks:
+      - id: capital1
+        correct_answers:
+          - Paris
+          - paris
+        case_sensitive: false
+        trim_whitespace: true
+        feedback:
+          correct: Correct! Paris is the capital of France.
+          incorrect: Think about the city known as the City of Light.
+
+  - id: q2
+    type: fill-blank
+    prompt: Fill in the blanks about JavaScript history.
+    text: JavaScript was created by [[creator]] in [[year]] at [[company]].
+    points: 3
+    blanks:
+      - id: creator
+        correct_answers:
+          - Brendan Eich
+        case_sensitive: true
+        trim_whitespace: true
+        feedback:
+          correct: Yes! Brendan Eich created JavaScript.
+          incorrect: The creator's name is Brendan Eich.
+      
+      - id: year
+        correct_answers:
+          - "1995"
+        case_sensitive: false
+        trim_whitespace: true
+        feedback:
+          correct: Correct! JavaScript was created in 1995.
+          incorrect: JavaScript was created in 1995.
+      
+      - id: company
+        correct_answers:
+          - Netscape
+          - Netscape Communications
+        case_sensitive: false
+        trim_whitespace: true
+        feedback:
+          correct: Right! It was created at Netscape.
+          incorrect: JavaScript was developed at Netscape Communications.
+    tags:
+      - javascript
+      - history
+
+  - id: q3
+    type: fill-blank
+    prompt: Complete the mathematical equation.
+    text: The square root of 16 is [[answer]].
+    points: 1
+    blanks:
+      - id: answer
+        correct_answers:
+          - "4"
+          - four
+        case_sensitive: false
+        trim_whitespace: true
+    tags:
+      - math
+      - basic

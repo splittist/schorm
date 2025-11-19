@@ -20,6 +20,11 @@
                 {{/if}}
             </header>
             
+            <!-- Embed quiz data for runtime scoring -->
+            <script type="application/json" id="schorm-quiz-data">
+                {{{jsonStringify quiz}}}
+            </script>
+
             <form id="quiz-form" class="quiz-form">
                 {{#each quiz.questions}}
                 <div class="question" data-question-id="{{id}}" data-question-type="{{type}}">
@@ -29,7 +34,7 @@
                     <div class="options">
                         {{#each options}}
                         <label class="option">
-                            <input type="radio" name="question-{{../id}}" value="{{id}}" data-correct="{{#if (eq id ../correct)}}true{{else}}false{{/if}}">
+                            <input type="radio" name="question-{{../id}}" value="{{id}}">
                             <span>{{text}}</span>
                         </label>
                         {{/each}}
@@ -40,7 +45,7 @@
                     <div class="options">
                         {{#each options}}
                         <label class="option">
-                            <input type="checkbox" name="question-{{../id}}" value="{{id}}" data-correct="{{#if (contains ../correct id)}}true{{else}}false{{/if}}">
+                            <input type="checkbox" name="question-{{../id}}" value="{{id}}">
                             <span>{{text}}</span>
                         </label>
                         {{/each}}
@@ -50,11 +55,11 @@
                     {{#if (eq type "true-false")}}
                     <div class="options">
                         <label class="option">
-                            <input type="radio" name="question-{{id}}" value="true" data-correct="{{#if correct}}true{{else}}false{{/if}}">
+                            <input type="radio" name="question-{{id}}" value="true">
                             <span>True</span>
                         </label>
                         <label class="option">
-                            <input type="radio" name="question-{{id}}" value="false" data-correct="{{#unless correct}}true{{else}}false{{/unless}}">
+                            <input type="radio" name="question-{{id}}" value="false">
                             <span>False</span>
                         </label>
                     </div>
@@ -85,22 +90,18 @@
                             </div>
                             {{/each}}
                         </div>
-                        <!-- Store correct pairs as data attribute for grading -->
-                        <input type="hidden" class="correct-pairs-data" value="{{jsonStringify correct_pairs}}" data-question-id="{{id}}">
                     </div>
                     {{/if}}
                 </div>
                 {{/each}}
                 
                 <div class="quiz-actions">
-                    <button type="submit" class="btn-submit">Submit Quiz</button>
+                    <button type="button" id="schorm-quiz-submit" class="btn-submit">Submit Quiz</button>
                 </div>
             </form>
             
-            <div id="quiz-results" class="quiz-results" style="display: none;">
-                <h2>Results</h2>
-                <p class="score">Score: <span id="score-value"></span></p>
-                <div id="feedback"></div>
+            <div id="schorm-quiz-result" class="quiz-results" style="display: none;">
+                <!-- Results will be inserted here by JavaScript -->
             </div>
         </article>
         

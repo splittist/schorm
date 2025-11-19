@@ -987,4 +987,109 @@ questions:
     expect(quizHtml).toMatch(/value="b"[^>]*data-correct="false"/);
     expect(quizHtml).toMatch(/value="d"[^>]*data-correct="false"/);
   });
+
+  it('should build a course with a true-false quiz', () => {
+    const projectName = 'true-false-course';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a quiz with true-false questions
+    const quizzesDir = path.join(projectPath, 'quizzes');
+    fs.mkdirSync(quizzesDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(quizzesDir, 'm1-quiz.yml'),
+      `id: m1-quiz
+module: m1
+title: "True or False Quiz"
+questions:
+  - id: q1
+    type: true-false
+    prompt: "The speed of light in vacuum is approximately 300,000 km per second."
+    points: 1
+    correct: true
+    feedback:
+      correct: "Yes, that's the usual rounded value."
+      incorrect: "Actually, it's about 299,792 km/s, often rounded to 300,000."
+  - id: q2
+    type: true-false
+    prompt: "JavaScript is the same as Java."
+    points: 1
+    correct: false
+    feedback:
+      correct: "Correct! JavaScript and Java are completely different languages."
+      incorrect: "Despite similar names, JavaScript and Java are different programming languages."
+  - id: q3
+    type: true-false
+    prompt: "TypeScript is a superset of JavaScript that adds static typing."
+    correct: true
+    points: 1
+    tags:
+      - typescript
+      - javascript
+`
+    );
+
+    // Update course.yml to include quiz
+    const courseYmlPath = path.join(projectPath, 'course.yml');
+    const courseData = yaml.parse(fs.readFileSync(courseYmlPath, 'utf-8'));
+    
+    // Ensure modules array exists and has at least one module
+    if (!courseData.modules || courseData.modules.length === 0) {
+      courseData.modules = [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: [],
+        },
+      ];
+    }
+    
+    courseData.modules[0].items.push('m1-quiz');
+    fs.writeFileSync(courseYmlPath, yaml.stringify(courseData));
+
+    // Build the course
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Verify quiz HTML was generated
+    const quizHtmlPath = path.join(projectPath, 'build', 'm1-quiz.html');
+    expect(fs.existsSync(quizHtmlPath)).toBe(true);
+
+    // Verify quiz HTML content
+    const quizHtml = fs.readFileSync(quizHtmlPath, 'utf-8');
+    expect(quizHtml).toContain('True or False Quiz');
+    expect(quizHtml).toContain('The speed of light in vacuum is approximately 300,000 km per second.');
+    expect(quizHtml).toContain('JavaScript is the same as Java.');
+    expect(quizHtml).toContain('TypeScript is a superset of JavaScript that adds static typing.');
+    
+    // Verify radio buttons are used for true-false questions
+    expect(quizHtml).toContain('type="radio"');
+    
+    // Verify quiz is marked as true-false type
+    expect(quizHtml).toContain('data-question-type="true-false"');
+    
+    // Verify True and False options are present
+    expect(quizHtml).toContain('<span>True</span>');
+    expect(quizHtml).toContain('<span>False</span>');
+    
+    // Verify correct answers are marked properly for each question
+    // For q1 (correct: true), the "true" radio button should be marked correct
+    expect(quizHtml).toMatch(/name="question-q1"[^>]*value="true"[^>]*data-correct="true"/);
+    expect(quizHtml).toMatch(/name="question-q1"[^>]*value="false"[^>]*data-correct="false"/);
+    
+    // For q2 (correct: false), the "false" radio button should be marked correct
+    expect(quizHtml).toMatch(/name="question-q2"[^>]*value="true"[^>]*data-correct="false"/);
+    expect(quizHtml).toMatch(/name="question-q2"[^>]*value="false"[^>]*data-correct="true"/);
+    
+    // For q3 (correct: true), the "true" radio button should be marked correct
+    expect(quizHtml).toMatch(/name="question-q3"[^>]*value="true"[^>]*data-correct="true"/);
+    expect(quizHtml).toMatch(/name="question-q3"[^>]*value="false"[^>]*data-correct="false"/);
+  });
 });

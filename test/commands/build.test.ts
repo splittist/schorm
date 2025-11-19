@@ -565,71 +565,9 @@ Test lesson with nested media.
       stdio: 'pipe',
     });
 
-    // Create multiple modules and lessons
-    const m1Dir = path.join(projectPath, 'content', 'm1');
-    const m2Dir = path.join(projectPath, 'content', 'm2');
-    fs.mkdirSync(m1Dir, { recursive: true });
-    fs.mkdirSync(m2Dir, { recursive: true });
-
-    fs.writeFileSync(
-      path.join(m1Dir, 'lesson1.md'),
-      `---
-id: m1-lesson1
-title: "Module 1 Lesson 1"
-module: m1
----
-
-# Lesson 1
-Content.
-`
-    );
-
-    fs.writeFileSync(
-      path.join(m1Dir, 'lesson2.md'),
-      `---
-id: m1-lesson2
-title: "Module 1 Lesson 2"
-module: m1
----
-
-# Lesson 2
-Content.
-`
-    );
-
-    fs.writeFileSync(
-      path.join(m2Dir, 'lesson1.md'),
-      `---
-id: m2-lesson1
-title: "Module 2 Lesson 1"
-module: m2
----
-
-# Lesson 1
-Content.
-`
-    );
-
-    // Update course.yml with description
-    const courseConfig = {
-      id: projectName,
-      title: 'Test Course Title',
-      metadata: {
-        description: 'This is a test course description',
-      },
-      modules: [
-        {
-          id: 'm1',
-          title: 'First Module',
-          items: ['m1-lesson1', 'm1-lesson2'],
-        },
-        {
-          id: 'm2',
-          title: 'Second Module',
-          items: ['m2-lesson1'],
-        },
-      ],
-    };
+    // Create a lesson
+    const lessonDir = path.join(projectPath, 'content', 'm1');
+    fs.mkdirSync(lessonDir, { recursive: true });
     fs.writeFileSync(
       path.join(projectPath, 'course.yml'),
       yaml.stringify(courseConfig)
@@ -703,6 +641,106 @@ Test lesson.
       yaml.stringify(courseConfig)
     );
 
+    // Run build with --json flag and capture output
+    const output = execSync(`${CLI_PATH} build --json`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Parse JSON output
+    const result = JSON.parse(output);
+    
+    // Verify JSON structure
+    expect(result.ok).toBe(true);
+    expect(result.summary).toBeDefined();
+    expect(result.summary.modules).toBe(1);
+    expect(result.summary.lessons).toBe(1);
+    expect(result.summary.media).toBe(0);
+    expect(result.summary.outputSize).toBeDefined();
+    expect(typeof result.summary.outputSize).toBe('number');
+    expect(result.summary.outputSize).toBeGreaterThan(0);
+  });
+
+  it('should generate index.html landing page with module and lesson links', () => {
+    const projectName = 'index-page-test';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create multiple modules and lessons
+    const m1Dir = path.join(projectPath, 'content', 'm1');
+    const m2Dir = path.join(projectPath, 'content', 'm2');
+    fs.mkdirSync(m1Dir, { recursive: true });
+    fs.mkdirSync(m2Dir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(m1Dir, 'lesson1.md'),
+      `---
+id: m1-lesson1
+title: "Module 1 Lesson 1"
+module: m1
+---
+
+# Lesson 1
+Content.
+`
+    );
+
+    fs.writeFileSync(
+      path.join(m1Dir, 'lesson2.md'),
+      `---
+id: m1-lesson2
+title: "Module 1 Lesson 2"
+module: m1
+---
+
+# Lesson 2
+Content.
+`
+    );
+
+    fs.writeFileSync(
+      path.join(m2Dir, 'lesson1.md'),
+      `---
+id: m2-lesson1
+title: "Module 2 Lesson 1"
+module: m2
+---
+
+# Lesson 1
+Content.
+`
+    );
+
+    // Update course.yml with description
+    const courseConfig = {
+      id: projectName,
+      title: 'Test Course Title',
+      metadata: {
+        description: 'This is a test course description',
+      },
+      modules: [
+        {
+          id: 'm1',
+          title: 'First Module',
+          items: ['m1-lesson1', 'm1-lesson2'],
+        },
+        {
+          id: 'm2',
+          title: 'Second Module',
+          items: ['m2-lesson1'],
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
     // Run build
     execSync(`${CLI_PATH} build`, {
       cwd: projectPath,
@@ -748,24 +786,6 @@ Test lesson.
     expect(manifest).toContain('identifier="RES-index"');
     expect(manifest).toContain('href="index.html"');
     expect(manifest).toContain('adlcp:scormType="asset"');
-    // Run build with --json flag and capture output
-    const output = execSync(`${CLI_PATH} build --json`, {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
-
-    // Parse JSON output
-    const result = JSON.parse(output);
-    
-    // Verify JSON structure
-    expect(result.ok).toBe(true);
-    expect(result.summary).toBeDefined();
-    expect(result.summary.modules).toBe(1);
-    expect(result.summary.lessons).toBe(1);
-    expect(result.summary.media).toBe(0);
-    expect(result.summary.outputSize).toBeDefined();
-    expect(typeof result.summary.outputSize).toBe('number');
-    expect(result.summary.outputSize).toBeGreaterThan(0);
   });
 
   it('should build a course with a single-choice quiz', () => {

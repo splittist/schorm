@@ -5,84 +5,206 @@
  * It handles communication with the LMS via the SCORM API adapter and manages
  * student progress, completion status, and score tracking.
  * 
- * Full implementation will be added in a future milestone.
- * 
- * @version 0.1.0
+ * @version 0.3.0
  * @license MIT
  */
 
 (function() {
   'use strict';
 
-  // SCORM API wrapper will be implemented here
+  // ============================================================================
+  // SCORM API Integration
+  // ============================================================================
+
   const SchormRuntime = {
+    api: null,
+    isInitialized: false,
+    isPreviewMode: false,
+
+    /**
+     * Find the SCORM API object by searching the window hierarchy
+     */
+    findAPI: function(win) {
+      let findAttempts = 0;
+      const maxAttempts = 500;
+      
+      while (win.API_1484_11 == null && win.parent != null && win.parent != win) {
+        findAttempts++;
+        if (findAttempts > maxAttempts) {
+          return null;
+        }
+        win = win.parent;
+      }
+      
+      return win.API_1484_11;
+    },
+
     /**
      * Initialize the SCORM runtime
      */
     init: function() {
-      console.log('schorm runtime initialized (stub)');
-      // TODO: Implement SCORM API detection and initialization
+      if (this.isInitialized) {
+        return true;
+      }
+
+      // Try to find SCORM API
+      this.api = this.findAPI(window);
+      
+      if (this.api == null) {
+        console.log('schorm: preview mode - no SCORM API found');
+        this.isPreviewMode = true;
+        this.isInitialized = true;
+        return true;
+      }
+
+      // Initialize SCORM session
+      const result = this.api.Initialize('');
+      if (result === 'true') {
+        this.isInitialized = true;
+        console.log('schorm: SCORM API initialized');
+        return true;
+      } else {
+        console.error('schorm: Failed to initialize SCORM API');
+        return false;
+      }
     },
 
     /**
-     * Find the SCORM API object
+     * Get a value from the SCORM API
      */
-    findAPI: function() {
-      // TODO: Implement recursive search for SCORM API in window hierarchy
-      return null;
+    getValue: function(element) {
+      if (!this.isInitialized) {
+        this.init();
+      }
+
+      if (this.isPreviewMode) {
+        return '';
+      }
+
+      return this.api.GetValue(element);
     },
 
     /**
-     * Set completion status
+     * Set a value in the SCORM API
      */
-    setCompleted: function() {
-      console.log('setCompleted called (stub)');
-      // TODO: Implement LMSSetValue('cmi.completion_status', 'completed')
-    },
+    setValue: function(element, value) {
+      if (!this.isInitialized) {
+        this.init();
+      }
 
-    /**
-     * Set score
-     */
-    setScore: function(score, min, max) {
-      console.log('setScore called (stub):', score, min, max);
-      // TODO: Implement LMSSetValue('cmi.score.scaled', scaled_score)
+      if (this.isPreviewMode) {
+        console.log('schorm: preview mode setValue:', element, '=', value);
+        return true;
+      }
+
+      const result = this.api.SetValue(element, value);
+      return result === 'true';
     },
 
     /**
      * Commit data to LMS
      */
     commit: function() {
-      console.log('commit called (stub)');
-      // TODO: Implement LMSCommit()
+      if (!this.isInitialized) {
+        return false;
+      }
+
+      if (this.isPreviewMode) {
+        console.log('schorm: preview mode commit');
+        return true;
+      }
+
+      const result = this.api.Commit('');
+      return result === 'true';
     },
 
     /**
      * Terminate SCORM session
      */
     terminate: function() {
-      console.log('terminate called (stub)');
-      // TODO: Implement LMSFinish()
+      if (!this.isInitialized || this.isPreviewMode) {
+        return true;
+      }
+
+      const result = this.api.Terminate('');
+      if (result === 'true') {
+        this.isInitialized = false;
+        return true;
+      }
+      return false;
     }
   };
 
-  // Quiz handling functionality
+  // ============================================================================
+  // Quiz Scoring Logic
+  // ============================================================================
+
   const SchormQuiz = {
+    /**
+     * Collect user answers from the DOM
+     * @returns {Object} Map of question ID to user answer
+     */
+    collectUserAnswersFromDom: function() {
+      const answers = {};
+      const questions = document.querySelectorAll('.question');
+
+      questions.forEach(function(questionElement) {
+        const questionId = questionElement.dataset.questionId;
+        const questionType = questionElement.dataset.questionType;
+
+        switch (questionType) {
+          case 'single-choice':
+          case 'true-false':
+            const selectedRadio = questionElement.querySelector('input[type="radio"]:checked');
+            if (selectedRadio) {
+              answers[questionId] = selectedRadio.value;
+            }
+            break;
+
+          case 'multiple-response':
+            const selectedCheckboxes = questionElement.querySelectorAll('input[type="checkbox"]:checked');
+            answers[questionId] = Array.from(selectedCheckboxes).map(cb => cb.value);
+            break;
+
+          case 'fill-blank':
+            const inputs = questionElement.querySelectorAll('.fill-blank-input');
+            const blankAnswers = {};
+            inputs.forEach(function(input) {
+              const blankId = input.dataset.blankId;
+              blankAnswers[blankId] = input.value;
+            });
+            answers[questionId] = blankAnswers;
+            break;
+
+          case 'matching':
+            const selects = questionElement.querySelectorAll('.matching-select');
+            const matchingAnswers = {};
+            selects.forEach(function(select) {
+              const premiseId = select.dataset.premiseId;
+              matchingAnswers[premiseId] = select.value;
+            });
+            answers[questionId] = matchingAnswers;
+            break;
+        }
+      });
+
+      return answers;
+    },
+
     /**
      * Check if a fill-blank answer is correct
      */
     checkFillBlankAnswer: function(userAnswer, correctAnswers, caseSensitive, trimWhitespace) {
-      let answer = userAnswer;
+      let answer = userAnswer || '';
       
-      // Apply whitespace trimming if enabled
-      if (trimWhitespace) {
+      if (trimWhitespace !== false) {
         answer = answer.trim();
       }
       
-      // Check against all correct answers
       for (let i = 0; i < correctAnswers.length; i++) {
         let correctAnswer = correctAnswers[i];
         
-        if (trimWhitespace) {
+        if (trimWhitespace !== false) {
           correctAnswer = correctAnswer.trim();
         }
         
@@ -101,219 +223,358 @@
     },
 
     /**
-     * Grade a fill-blank question
+     * Evaluate a single question
+     * @param {Object} question - Question object from quiz model
+     * @param {*} userAnswer - User's answer for this question
+     * @returns {Object} Result with correct, score, maxScore
      */
-    gradeFillBlankQuestion: function(questionElement) {
-      const inputs = questionElement.querySelectorAll('.fill-blank-input');
-      let totalBlanks = inputs.length;
-      let correctBlanks = 0;
+    evaluateQuestion: function(question, userAnswer) {
+      const points = question.points || 1;
+      
+      switch (question.type) {
+        case 'single-choice':
+          return this.evaluateSingleChoice(question, userAnswer, points);
+        
+        case 'true-false':
+          return this.evaluateTrueFalse(question, userAnswer, points);
+        
+        case 'multiple-response':
+          return this.evaluateMultipleResponse(question, userAnswer, points);
+        
+        case 'fill-blank':
+          return this.evaluateFillBlank(question, userAnswer, points);
+        
+        case 'matching':
+          return this.evaluateMatching(question, userAnswer, points);
+        
+        default:
+          return { correct: false, score: 0, maxScore: points };
+      }
+    },
 
-      inputs.forEach(function(input) {
-        const userAnswer = input.value;
-        const correctAnswers = input.dataset.correctAnswers.split('|||');
-        const caseSensitive = input.dataset.caseSensitive === 'true';
-        const trimWhitespace = input.dataset.trimWhitespace !== 'false';
+    /**
+     * Evaluate single-choice question
+     */
+    evaluateSingleChoice: function(question, userAnswer, points) {
+      const correct = userAnswer === question.correct;
+      return {
+        correct: correct,
+        score: correct ? points : 0,
+        maxScore: points
+      };
+    },
 
-        const isCorrect = SchormQuiz.checkFillBlankAnswer(
-          userAnswer,
-          correctAnswers,
-          caseSensitive,
-          trimWhitespace
-        );
+    /**
+     * Evaluate true-false question
+     */
+    evaluateTrueFalse: function(question, userAnswer, points) {
+      const userBool = userAnswer === 'true' || userAnswer === true;
+      const correct = userBool === question.correct;
+      return {
+        correct: correct,
+        score: correct ? points : 0,
+        maxScore: points
+      };
+    },
 
-        if (isCorrect) {
-          correctBlanks++;
-          input.classList.add('correct');
-          input.classList.remove('incorrect');
-        } else {
-          input.classList.add('incorrect');
-          input.classList.remove('correct');
+    /**
+     * Evaluate multiple-response question
+     */
+    evaluateMultipleResponse: function(question, userAnswer, points) {
+      if (!Array.isArray(userAnswer)) {
+        return { correct: false, score: 0, maxScore: points };
+      }
+
+      // Sort both arrays for comparison
+      const userSet = userAnswer.slice().sort();
+      const correctSet = question.correct.slice().sort();
+      
+      // Check if arrays are equal
+      const correct = userSet.length === correctSet.length &&
+                      userSet.every((val, index) => val === correctSet[index]);
+      
+      return {
+        correct: correct,
+        score: correct ? points : 0,
+        maxScore: points
+      };
+    },
+
+    /**
+     * Evaluate fill-blank question
+     */
+    evaluateFillBlank: function(question, userAnswer, points) {
+      if (typeof userAnswer !== 'object' || userAnswer === null) {
+        return { correct: false, score: 0, maxScore: points };
+      }
+
+      const blanks = question.blanks;
+      let correctCount = 0;
+
+      for (let i = 0; i < blanks.length; i++) {
+        const blank = blanks[i];
+        const userBlankAnswer = userAnswer[blank.id];
+        
+        if (userBlankAnswer !== undefined) {
+          const isCorrect = this.checkFillBlankAnswer(
+            userBlankAnswer,
+            blank.correct_answers,
+            blank.case_sensitive,
+            blank.trim_whitespace
+          );
+          
+          if (isCorrect) {
+            correctCount++;
+          }
         }
-      });
+      }
+
+      const allCorrect = correctCount === blanks.length;
+      const score = blanks.length > 0 ? (correctCount / blanks.length) * points : 0;
+      
+      return {
+        correct: allCorrect,
+        score: score,
+        maxScore: points
+      };
+    },
+
+    /**
+     * Evaluate matching question
+     */
+    evaluateMatching: function(question, userAnswer, points) {
+      if (typeof userAnswer !== 'object' || userAnswer === null) {
+        return { correct: false, score: 0, maxScore: points };
+      }
+
+      const correctPairs = question.correct_pairs;
+      let allCorrect = true;
+
+      for (let i = 0; i < correctPairs.length; i++) {
+        const pair = correctPairs[i];
+        const userResponse = userAnswer[pair.premise];
+        
+        if (userResponse !== pair.response) {
+          allCorrect = false;
+          break;
+        }
+      }
 
       return {
-        correct: correctBlanks === totalBlanks,
-        score: totalBlanks > 0 ? correctBlanks / totalBlanks : 0,
-        correctCount: correctBlanks,
-        totalCount: totalBlanks
+        correct: allCorrect,
+        score: allCorrect ? points : 0,
+        maxScore: points
       };
     },
 
     /**
-     * Grade a single-choice question
+     * Evaluate entire quiz
+     * @param {Object} quizModel - Quiz object with questions
+     * @param {Object} userAnswers - Map of question ID to user answer
+     * @returns {Object} QuizResult with totalScore, maxScore, scaledScore, passed, perQuestion
      */
-    gradeSingleChoiceQuestion: function(questionElement) {
-      const questionId = questionElement.dataset.questionId;
-      const selectedInput = questionElement.querySelector('input[type="radio"]:checked');
-      
-      if (!selectedInput) {
-        return { correct: false, score: 0 };
-      }
-      
-      const isCorrect = selectedInput.dataset.correct === 'true';
-      
-      // Mark all options
-      const allInputs = questionElement.querySelectorAll('input[type="radio"]');
-      allInputs.forEach(function(input) {
-        const label = input.closest('label');
-        if (input === selectedInput) {
-          if (isCorrect) {
-            label.classList.add('correct');
-          } else {
-            label.classList.add('incorrect');
-          }
-        }
-      });
-      
-      return { correct: isCorrect, score: isCorrect ? 1 : 0 };
-    },
+    evaluateQuiz: function(quizModel, userAnswers) {
+      const perQuestion = [];
+      let totalScore = 0;
+      let maxScore = 0;
 
-    /**
-     * Grade a multiple-response question
-     */
-    gradeMultipleResponseQuestion: function(questionElement) {
-      const selectedInputs = questionElement.querySelectorAll('input[type="checkbox"]:checked');
-      const allInputs = questionElement.querySelectorAll('input[type="checkbox"]');
-      
-      let allCorrect = true;
-      let correctCount = 0;
-      let totalCorrect = 0;
-      
-      allInputs.forEach(function(input) {
-        const isCorrect = input.dataset.correct === 'true';
-        const isChecked = input.checked;
-        
-        if (isCorrect) {
-          totalCorrect++;
-          if (isChecked) {
-            correctCount++;
-          } else {
-            allCorrect = false;
-          }
-        } else if (isChecked) {
-          allCorrect = false;
-        }
-        
-        const label = input.closest('label');
-        if (isChecked) {
-          if (isCorrect) {
-            label.classList.add('correct');
-          } else {
-            label.classList.add('incorrect');
-          }
-        }
-      });
-      
-      return { 
-        correct: allCorrect, 
-        score: totalCorrect > 0 ? correctCount / totalCorrect : 0 
+      for (let i = 0; i < quizModel.questions.length; i++) {
+        const question = quizModel.questions[i];
+        const userAnswer = userAnswers[question.id];
+        const result = this.evaluateQuestion(question, userAnswer);
+
+        perQuestion.push({
+          id: question.id,
+          correct: result.correct,
+          score: result.score,
+          maxScore: result.maxScore
+        });
+
+        totalScore += result.score;
+        maxScore += result.maxScore;
+      }
+
+      const scaledScore = maxScore > 0 ? totalScore / maxScore : 0;
+      const passingScore = quizModel.passing_score || 0.8;
+      const passed = scaledScore >= passingScore;
+
+      return {
+        totalScore: totalScore,
+        maxScore: maxScore,
+        scaledScore: scaledScore,
+        passed: passed,
+        perQuestion: perQuestion
       };
     },
 
     /**
-     * Grade a true/false question
+     * Submit quiz result to SCORM API or localStorage
+     * @param {string} quizId - Quiz identifier
+     * @param {Object} result - QuizResult object
      */
-    gradeTrueFalseQuestion: function(questionElement) {
-      const selectedInput = questionElement.querySelector('input[type="radio"]:checked');
-      
-      if (!selectedInput) {
-        return { correct: false, score: 0 };
-      }
-      
-      const isCorrect = selectedInput.dataset.correct === 'true';
-      
-      const allInputs = questionElement.querySelectorAll('input[type="radio"]');
-      allInputs.forEach(function(input) {
-        const label = input.closest('label');
-        if (input === selectedInput) {
-          if (isCorrect) {
-            label.classList.add('correct');
-          } else {
-            label.classList.add('incorrect');
-          }
+    submitQuizResult: function(quizId, result) {
+      // Ensure SCORM is initialized
+      SchormRuntime.init();
+
+      if (SchormRuntime.isPreviewMode) {
+        // Store in localStorage for preview mode
+        const resultData = {
+          quizId: quizId,
+          totalScore: result.totalScore,
+          maxScore: result.maxScore,
+          scaledScore: result.scaledScore,
+          passed: result.passed,
+          timestamp: new Date().toISOString()
+        };
+        
+        try {
+          localStorage.setItem('schorm:quiz:' + quizId, JSON.stringify(resultData));
+          console.log('schorm: preview mode – quiz "' + quizId + '" result', resultData);
+        } catch (e) {
+          console.error('schorm: Failed to save quiz result to localStorage', e);
         }
-      });
-      
-      return { correct: isCorrect, score: isCorrect ? 1 : 0 };
+      } else {
+        // Submit to SCORM API
+        SchormRuntime.setValue('cmi.score.raw', result.totalScore.toString());
+        SchormRuntime.setValue('cmi.score.max', result.maxScore.toString());
+        SchormRuntime.setValue('cmi.score.scaled', result.scaledScore.toFixed(2));
+        SchormRuntime.setValue('cmi.success_status', result.passed ? 'passed' : 'failed');
+        SchormRuntime.setValue('cmi.completion_status', 'completed');
+        SchormRuntime.commit();
+      }
     },
 
     /**
-     * Initialize quiz form handler
+     * Check if all required answers are provided
+     * @param {Object} quizModel - Quiz object
+     * @param {Object} userAnswers - User answers
+     * @returns {Object} { complete: boolean, missingCount: number }
      */
-    initQuizForm: function() {
-      const quizForm = document.getElementById('quiz-form');
-      if (!quizForm) {
+    checkAnswersComplete: function(quizModel, userAnswers) {
+      let missingCount = 0;
+
+      for (let i = 0; i < quizModel.questions.length; i++) {
+        const question = quizModel.questions[i];
+        const answer = userAnswers[question.id];
+
+        if (answer === undefined || answer === null || answer === '') {
+          missingCount++;
+        } else if (question.type === 'multiple-response' && Array.isArray(answer) && answer.length === 0) {
+          missingCount++;
+        } else if (question.type === 'fill-blank') {
+          const blanks = question.blanks;
+          for (let j = 0; j < blanks.length; j++) {
+            const blankId = blanks[j].id;
+            if (!answer[blankId] || answer[blankId].trim() === '') {
+              missingCount++;
+              break;
+            }
+          }
+        } else if (question.type === 'matching') {
+          const pairs = question.correct_pairs;
+          for (let j = 0; j < pairs.length; j++) {
+            const premiseId = pairs[j].premise;
+            if (!answer[premiseId]) {
+              missingCount++;
+              break;
+            }
+          }
+        }
+      }
+
+      return {
+        complete: missingCount === 0,
+        missingCount: missingCount
+      };
+    },
+
+    /**
+     * Display quiz results in the UI
+     * @param {Object} result - QuizResult object
+     */
+    displayResults: function(result) {
+      const resultsDiv = document.getElementById('schorm-quiz-result');
+      if (!resultsDiv) {
         return;
       }
 
-      quizForm.addEventListener('submit', function(e) {
+      const percentage = Math.round(result.scaledScore * 100);
+      const passFailText = result.passed ? 'Passed' : 'Failed';
+      const passFailClass = result.passed ? 'passed' : 'failed';
+
+      resultsDiv.innerHTML = 
+        '<h2>Results</h2>' +
+        '<p class="score">You scored ' + result.totalScore.toFixed(1) + '/' + result.maxScore + ' (' + percentage + '%). ' +
+        '<span class="' + passFailClass + '">' + passFailText + '</span></p>';
+      
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    },
+
+    /**
+     * Initialize quiz submit handler
+     */
+    initQuizSubmit: function() {
+      const submitButton = document.getElementById('schorm-quiz-submit');
+      if (!submitButton) {
+        return;
+      }
+
+      // Get quiz model from embedded data
+      const quizDataElement = document.getElementById('schorm-quiz-data');
+      if (!quizDataElement) {
+        console.error('schorm: Quiz data not found');
+        return;
+      }
+
+      let quizModel;
+      try {
+        quizModel = JSON.parse(quizDataElement.textContent);
+      } catch (e) {
+        console.error('schorm: Failed to parse quiz data', e);
+        return;
+      }
+
+      submitButton.addEventListener('click', function(e) {
         e.preventDefault();
-        
-        const questions = quizForm.querySelectorAll('.question');
-        let totalScore = 0;
-        let maxScore = questions.length;
-        let correctCount = 0;
 
-        questions.forEach(function(questionElement) {
-          const questionType = questionElement.dataset.questionType;
-          let result;
+        // Collect user answers
+        const userAnswers = SchormQuiz.collectUserAnswersFromDom();
 
-          switch (questionType) {
-            case 'fill-blank':
-              result = SchormQuiz.gradeFillBlankQuestion(questionElement);
-              break;
-            case 'single-choice':
-              result = SchormQuiz.gradeSingleChoiceQuestion(questionElement);
-              break;
-            case 'multiple-response':
-              result = SchormQuiz.gradeMultipleResponseQuestion(questionElement);
-              break;
-            case 'true-false':
-              result = SchormQuiz.gradeTrueFalseQuestion(questionElement);
-              break;
-            default:
-              result = { correct: false, score: 0 };
-          }
+        // Check if all answers are provided
+        const completionCheck = SchormQuiz.checkAnswersComplete(quizModel, userAnswers);
+        if (!completionCheck.complete) {
+          alert('Please answer all questions before submitting.');
+          return;
+        }
 
-          if (result.correct) {
-            correctCount++;
-          }
-          totalScore += result.score;
-        });
+        // Evaluate quiz
+        const result = SchormQuiz.evaluateQuiz(quizModel, userAnswers);
+
+        // Submit to SCORM/localStorage
+        SchormQuiz.submitQuizResult(quizModel.id, result);
 
         // Display results
-        const percentage = Math.round((totalScore / maxScore) * 100);
-        const resultsDiv = document.getElementById('quiz-results');
-        const scoreValue = document.getElementById('score-value');
-        
-        if (scoreValue) {
-          scoreValue.textContent = percentage + '% (' + correctCount + '/' + questions.length + ' correct)';
-        }
-        
-        if (resultsDiv) {
-          resultsDiv.style.display = 'block';
-        }
+        SchormQuiz.displayResults(result);
 
-        // Scroll to results
-        resultsDiv.scrollIntoView({ behavior: 'smooth' });
-
-        // Report to SCORM
-        SchormRuntime.setScore(percentage, 0, 100);
-        SchormRuntime.setCompleted();
-        SchormRuntime.commit();
+        // Disable submit button
+        submitButton.disabled = true;
       });
     }
   };
 
-  // Auto-initialize on page load
+  // ============================================================================
+  // Auto-initialization
+  // ============================================================================
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       SchormRuntime.init();
-      SchormQuiz.initQuizForm();
+      SchormQuiz.initQuizSubmit();
     });
   } else {
     SchormRuntime.init();
-    SchormQuiz.initQuizForm();
+    SchormQuiz.initQuizSubmit();
   }
 
   // Export for use in page scripts

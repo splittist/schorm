@@ -11,7 +11,8 @@ export interface Quiz {
   module: string;
   title: string;
   questions: Question[];
-  // future: passingScore?, tags?, metadata?
+  passing_score?: number; // 0-1 scale, default 0.8
+  // future: tags?, metadata?
 }
 
 // ============================================================================

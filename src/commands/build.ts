@@ -9,6 +9,7 @@ import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
+import type { Lesson } from '../core/course-model.js';
 import { 
   wrapError,
   formatErrorsForHuman,
@@ -94,7 +95,7 @@ export const buildCommand = new Command('build')
       log('📝 Parsing lessons...');
       const contentDir = path.resolve('content');
       const lessonFiles = findLessons(contentDir);
-      const lessons = [];
+      const lessons: Lesson[] = [];
       
       for (const file of lessonFiles) {
         try {
@@ -193,6 +194,46 @@ export const buildCommand = new Command('build')
         }
       }
       log();
+
+      // Step 6.5: Generate index.html landing page
+      log('🏠 Generating index page...');
+      try {
+        const indexTemplate = loadTemplate(path.join(layoutsDir, 'index.html'));
+        
+        // Build modules data with their items (lessons)
+        const modulesWithItems = course.modules.map(module => {
+          const items = module.items
+            .map(itemId => lessons.find(l => l.id === itemId))
+            .filter(item => item !== undefined)
+            .map(lesson => ({
+              id: lesson!.id,
+              title: lesson!.title,
+            }));
+          
+          return {
+            id: module.id,
+            title: module.title,
+            items,
+          };
+        });
+        
+        const indexHtml = templateEngine.render(indexTemplate, {
+          courseTitle: course.title,
+          courseDescription: course.metadata?.description,
+          modules: modulesWithItems,
+        });
+        
+        const indexPath = path.join(outputDir, 'index.html');
+        fs.writeFileSync(indexPath, indexHtml, 'utf-8');
+        log(`   ✓ index.html\n`);
+      } catch (error) {
+        errors.push(wrapError(
+          error,
+          'E-TEMPLATE-RENDER',
+          'Failed to render index page',
+          { file: 'index.html', originatingStep: 'template' }
+        ));
+      }
 
       // Step 7: Copy theme assets
       log('🎨 Copying theme assets...');

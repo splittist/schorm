@@ -2,6 +2,9 @@
  * Build error types and formatting
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 export interface BuildError {
   code: string;
   message: string;
@@ -21,6 +24,7 @@ export interface BuildResult {
     lessons?: number;
     media?: number;
     outputDir?: string;
+    outputSize?: number;
   };
 }
 
@@ -108,12 +112,60 @@ export function formatSuccessMessage(summary: BuildResult['summary']): string {
     if (summary.media !== undefined) {
       lines.push(`   Media files: ${summary.media}`);
     }
+    if (summary.outputSize !== undefined) {
+      lines.push(`   Output size: ${formatBytes(summary.outputSize)}`);
+    }
     if (summary.outputDir) {
       lines.push(`   Output: ${summary.outputDir}`);
     }
   }
   
   return lines.join('\n');
+}
+
+/**
+ * Calculate the total size of a directory recursively
+ */
+export function calculateDirectorySize(dirPath: string): number {
+  let totalSize = 0;
+
+  if (!fs.existsSync(dirPath)) {
+    return 0;
+  }
+
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    
+    if (entry.isDirectory()) {
+      totalSize += calculateDirectorySize(fullPath);
+    } else if (entry.isFile()) {
+      const stats = fs.statSync(fullPath);
+      totalSize += stats.size;
+    }
+  }
+
+  return totalSize;
+}
+
+/**
+ * Format bytes in human-readable format
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const value = bytes / Math.pow(k, i);
+  
+  // Format with appropriate decimal places
+  if (i === 0) {
+    return `${bytes} B`;
+  } else {
+    return `${value.toFixed(2)} ${units[i]}`;
+  }
 }
 
 /**

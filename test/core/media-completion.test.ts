@@ -102,15 +102,15 @@ describe('Media Completion Tracking (Runtime)', () => {
 
   describe('Preview Mode Integration', () => {
     it('should log media completion in preview mode', () => {
-      expect(runtimeCode).toContain('schorm: media completed mediaId=');
+      expect(runtimeCode).toContain('[SCHORM Preview] Event: media ended, mediaId=');
     });
 
     it('should log all media completed in preview mode', () => {
-      expect(runtimeCode).toContain('schorm: all media completed');
+      expect(runtimeCode).toContain('[SCHORM Preview] All tracked media completed');
     });
 
     it('should log number of tracked media elements', () => {
-      expect(runtimeCode).toContain("schorm: tracking ' + this._trackedMediaIds.length + ' media element(s)'");
+      expect(runtimeCode).toContain("[SCHORM Preview] Tracking ' + this._trackedMediaIds.length + ' media element(s):'");
     });
 
     it('should check isPreviewMode before logging', () => {

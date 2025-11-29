@@ -358,4 +358,86 @@ describe('Manifest Sequencing Generation', () => {
     expect(manifest).toContain('imsss:sequencing');
     expect(manifest).toContain('forwardOnly="true"');
   });
+
+  it('should emit branching post-condition rules and objectives for choices', () => {
+    const course = createBasicCourse([
+      {
+        id: 'm1',
+        title: 'Module 1',
+        items: ['intro', 'decision', 'path-a', 'path-b'],
+        sequencing: {
+          mode: 'free',
+          branches: [{ id: 'main', start: 'intro', choices: ['role-choice'] }],
+          choices: [
+            {
+              id: 'role-choice',
+              from: 'decision',
+              routes: [
+                { to: 'path-a', condition: { variable: 'learner.role', equals: 'architect' } },
+                { to: 'path-b', condition: { variable: 'learner.role', notEquals: 'architect' } },
+                { end: true },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+
+    const lessons = [
+      createLesson('intro', 'Intro', 'm1'),
+      createLesson('decision', 'Decision', 'm1'),
+      createLesson('path-a', 'Path A', 'm1'),
+      createLesson('path-b', 'Path B', 'm1'),
+    ];
+
+    const manifest = buildManifestFromCourse(course, lessons, []);
+
+    expect(manifest).toContain('imsss:postConditionRule');
+    expect(manifest).toContain('action="jump" target="ITEM-path-a"');
+    expect(manifest).toContain('action="exitAll"');
+    expect(manifest).toContain('branch-m1-learner-role-eq-architect');
+    expect(manifest).toContain('local-decision-learner-role-eq-architect');
+    expect(manifest).toContain('choice="true"');
+    expect(manifest).toContain('flow="true"');
+  });
+
+  it('should combine multiple route conditions with jump sequencing', () => {
+    const course = createBasicCourse([
+      {
+        id: 'm1',
+        title: 'Module 1',
+        items: ['start', 'checkpoint', 'advanced'],
+        sequencing: {
+          choices: [
+            {
+              id: 'checkpoint-choice',
+              from: 'checkpoint',
+              routes: [
+                {
+                  to: 'advanced',
+                  conditions: [
+                    { variable: 'score.passed', equals: true },
+                    { variable: 'region', in: ['us', 'ca'] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+
+    const lessons = [
+      createLesson('start', 'Start', 'm1'),
+      createLesson('checkpoint', 'Checkpoint', 'm1'),
+      createLesson('advanced', 'Advanced', 'm1'),
+    ];
+
+    const manifest = buildManifestFromCourse(course, lessons, []);
+
+    expect(manifest).toContain('conditionCombination="all"');
+    expect(manifest).toContain('branch-m1-score-passed-eq-true');
+    expect(manifest).toContain('branch-m1-region-in-us-ca');
+    expect(manifest).toContain('target="ITEM-advanced"');
+  });
 });

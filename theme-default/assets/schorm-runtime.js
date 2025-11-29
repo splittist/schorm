@@ -322,7 +322,7 @@
      */
     evaluateQuestion: function(question, userAnswer) {
       const points = question.points || 1;
-      var result;
+      let result;
       
       switch (question.type) {
         case 'single-choice':
@@ -880,7 +880,7 @@
      * Dump the current quiz state to the console
      */
     dumpQuizAnswers: function() {
-      var answers = SchormQuiz.collectUserAnswersFromDom();
+      const answers = SchormQuiz.collectUserAnswersFromDom();
       console.log('[SCHORM Debug] Current Quiz Answers:', answers);
     },
 

@@ -38,12 +38,14 @@ export const ErrorCodes = {
   EMPTY_QUESTIONS: 'EMPTY_QUESTIONS',
   INVALID_PASSING_SCORE: 'INVALID_PASSING_SCORE',
   DUPLICATE_QUESTION_ID: 'DUPLICATE_QUESTION_ID',
+  INVALID_QUIZ_FORMAT: 'INVALID_QUIZ_FORMAT',
 
   // Question-level errors
   MISSING_QUESTION_ID: 'MISSING_QUESTION_ID',
   MISSING_QUESTION_TYPE: 'MISSING_QUESTION_TYPE',
   UNKNOWN_QUESTION_TYPE: 'UNKNOWN_QUESTION_TYPE',
   MISSING_PROMPT: 'MISSING_PROMPT',
+  INVALID_QUESTION_FORMAT: 'INVALID_QUESTION_FORMAT',
 
   // Single-choice errors
   MISSING_OPTIONS: 'MISSING_OPTIONS',
@@ -51,6 +53,8 @@ export const ErrorCodes = {
   MISSING_CORRECT: 'MISSING_CORRECT',
   INVALID_OPTION_REFERENCE: 'INVALID_OPTION_REFERENCE',
   DUPLICATE_OPTION_ID: 'DUPLICATE_OPTION_ID',
+  INVALID_OPTION_FORMAT: 'INVALID_OPTION_FORMAT',
+  MISSING_OPTION_ID: 'MISSING_OPTION_ID',
 
   // Multiple-response errors
   EMPTY_CORRECT_ARRAY: 'EMPTY_CORRECT_ARRAY',
@@ -68,6 +72,7 @@ export const ErrorCodes = {
   DUPLICATE_BLANK_ID: 'DUPLICATE_BLANK_ID',
   MISSING_CORRECT_ANSWERS: 'MISSING_CORRECT_ANSWERS',
   EMPTY_CORRECT_ANSWERS: 'EMPTY_CORRECT_ANSWERS',
+  INVALID_BLANK_FORMAT: 'INVALID_BLANK_FORMAT',
 
   // Matching errors
   MISSING_PREMISES: 'MISSING_PREMISES',
@@ -155,7 +160,7 @@ export function validateQuiz(quizData: unknown, errors: QuizValidationError[]): 
   // Check if quizData is an object
   if (!quizData || typeof quizData !== 'object') {
     errors.push({
-      code: 'INVALID_QUIZ_FORMAT',
+      code: ErrorCodes.INVALID_QUIZ_FORMAT,
       message: 'Quiz must be an object',
       path: '',
     });
@@ -237,7 +242,7 @@ function validateQuestion(
 ): void {
   if (!question || typeof question !== 'object') {
     errors.push({
-      code: 'INVALID_QUESTION_FORMAT',
+      code: ErrorCodes.INVALID_QUESTION_FORMAT,
       message: 'Question must be an object',
       path: basePath,
     });
@@ -609,7 +614,7 @@ function validateFillBlankQuestion(
 
     if (!blank || typeof blank !== 'object') {
       errors.push({
-        code: 'INVALID_BLANK_FORMAT',
+        code: ErrorCodes.INVALID_BLANK_FORMAT,
         message: 'Each blank must be an object',
         questionId,
         questionType: 'fill-blank',
@@ -905,7 +910,7 @@ function validateOptions(
 
     if (!option || typeof option !== 'object') {
       errors.push({
-        code: 'INVALID_OPTION_FORMAT',
+        code: ErrorCodes.INVALID_OPTION_FORMAT,
         message: 'Each option must be an object with id and text',
         questionId,
         questionType,
@@ -919,7 +924,7 @@ function validateOptions(
     // Validate option id
     if (opt.id === undefined || opt.id === null || typeof opt.id !== 'string' || opt.id.trim() === '') {
       errors.push({
-        code: 'MISSING_OPTION_ID',
+        code: ErrorCodes.MISSING_OPTION_ID,
         message: 'Each option must have an id',
         questionId,
         questionType,

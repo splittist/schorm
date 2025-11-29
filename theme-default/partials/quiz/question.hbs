@@ -4,17 +4,13 @@
     
     {{#if (eq question.type "single-choice")}}
         {{> quiz/single-choice question=question}}
-    {{/if}}
-    {{#if (eq question.type "multiple-response")}}
+    {{else if (eq question.type "multiple-response")}}
         {{> quiz/multiple-response question=question}}
-    {{/if}}
-    {{#if (eq question.type "true-false")}}
+    {{else if (eq question.type "true-false")}}
         {{> quiz/true-false question=question}}
-    {{/if}}
-    {{#if (eq question.type "fill-blank")}}
+    {{else if (eq question.type "fill-blank")}}
         {{> quiz/fill-blank question=question}}
-    {{/if}}
-    {{#if (eq question.type "matching")}}
+    {{else if (eq question.type "matching")}}
         {{> quiz/matching question=question}}
     {{/if}}
     

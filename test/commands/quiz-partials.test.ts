@@ -258,7 +258,7 @@ modules:
     expect(html).toContain('Blue');
     expect(html).toContain('Sky color');
     expect(html).toContain('Fire color');
-    expect(html).toContain('— Choose —');
+    expect(html).toContain('Select an answer');
   });
 
   it('should include sr-only legends for accessibility', () => {

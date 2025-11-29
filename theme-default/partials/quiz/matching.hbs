@@ -9,8 +9,8 @@
                     <span class="premise-text schorm-premise">{{{text}}}</span>
                 </div>
                 <div class="response-selector">
-                    <select data-premise-id="{{id}}" name="matching-{{../question.id}}-{{id}}" class="matching-select">
-                        <option value="">— Choose —</option>
+                    <select data-premise-id="{{id}}" name="matching-{{../question.id}}-{{id}}" class="matching-select" aria-label="Select an answer for {{text}}">
+                        <option value="">Select an answer</option>
                         {{#each ../question.responses}}
                         <option value="{{id}}">
                             {{{text}}}

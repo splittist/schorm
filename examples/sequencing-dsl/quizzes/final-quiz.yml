@@ -1,0 +1,12 @@
+id: final-quiz
+title: Final Checkpoint
+questions:
+  - id: q1
+    type: single-choice
+    prompt: What ends the module?
+    options:
+      - Complete either branch and pass this quiz
+      - Viewing the intro slide
+      - Setting learner.role to engineer
+      - Skipping straight to debrief
+    correct_answer: Complete either branch and pass this quiz

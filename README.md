@@ -157,6 +157,17 @@ Validation protects against invalid references, cycles, and missing targets:
 - Routes must either declare `end: true` or a `to` target
 - Conditional routes may not form cycles (e.g., `a -> b -> a`), keeping graphs SCORM-friendly
 
+### Sequencing DSL → SCORM behaviors
+
+`schorm` converts the YAML sequencing DSL into a narrow, predictable set of SCORM 2004 sequencing constructs so authors and LLMs can script flows safely:
+
+- `mode: linear` → SCORM `controlMode.forwardOnly=true` on modules and items to keep navigation chronological while still honoring LMS next/back controls.
+- `gate.quiz: <id>` → the quiz writes a global objective when passed; subsequent items map to that objective and get a precondition rule that disables launch until it is satisfied. Expect LMS UIs to gray out or block those items until the quiz is passed.
+- `choices` and `branches` → each `choice.from` item gets `postcondition` rules that `jump` to the chosen target or `exitAll` when `end: true`. Route conditions are encoded as objective checks so only one matching route will execute.
+- Only simple control mode flags, preconditions (`disabled`), postconditions (`jump`/`exitAll`), and objective mappings are emitted; full SCORM rollup rules and complex condition combinations are intentionally out of scope.
+
+See the `/examples/sequencing-dsl` sample for a complete `course.yml` that branches on `learner.role`, locks a debrief until a quiz is passed, and shows how the manifest builder interprets each field.
+
 ## Content Authoring
 
 ### Writing Lessons

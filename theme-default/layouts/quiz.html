@@ -27,72 +27,7 @@
 
             <form id="quiz-form" class="quiz-form">
                 {{#each quiz.questions}}
-                <div class="question" data-question-id="{{id}}" data-question-type="{{type}}">
-                    <h3 class="question-text">{{prompt}}</h3>
-                    
-                    {{#if (eq type "single-choice")}}
-                    <div class="options">
-                        {{#each options}}
-                        <label class="option">
-                            <input type="radio" name="question-{{../id}}" value="{{id}}">
-                            <span>{{text}}</span>
-                        </label>
-                        {{/each}}
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq type "multiple-response")}}
-                    <div class="options">
-                        {{#each options}}
-                        <label class="option">
-                            <input type="checkbox" name="question-{{../id}}" value="{{id}}">
-                            <span>{{text}}</span>
-                        </label>
-                        {{/each}}
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq type "true-false")}}
-                    <div class="options">
-                        <label class="option">
-                            <input type="radio" name="question-{{id}}" value="true">
-                            <span>True</span>
-                        </label>
-                        <label class="option">
-                            <input type="radio" name="question-{{id}}" value="false">
-                            <span>False</span>
-                        </label>
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq type "fill-blank")}}
-                    <div class="fill-blank-question">
-                        <p class="fill-blank-text">{{{parseFillBlanks text blanks}}}</p>
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq type "matching")}}
-                    <div class="matching-question">
-                        <div class="matching-pairs">
-                            {{#each premises}}
-                            <div class="matching-row" data-premise-id="{{id}}">
-                                <div class="premise">
-                                    <span class="premise-text">{{text}}</span>
-                                </div>
-                                <div class="response-selector">
-                                    <select name="matching-{{../id}}-{{id}}" class="matching-select" data-premise-id="{{id}}">
-                                        <option value="">-- Select --</option>
-                                        {{#each ../responses}}
-                                        <option value="{{id}}">{{text}}</option>
-                                        {{/each}}
-                                    </select>
-                                </div>
-                            </div>
-                            {{/each}}
-                        </div>
-                    </div>
-                    {{/if}}
-                </div>
+                {{> quiz/question question=this index=@index}}
                 {{/each}}
                 
                 <div class="quiz-actions">

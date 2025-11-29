@@ -1,0 +1,15 @@
+<div class="options">
+    <fieldset>
+        <legend class="sr-only">{{{question.prompt}}}</legend>
+        
+        {{#each question.options}}
+        <label class="option schorm-option">
+            <input type="checkbox"
+                   name="question-{{../question.id}}"
+                   value="{{id}}"
+                   data-option-id="{{id}}">
+            <span>{{{text}}}</span>
+        </label>
+        {{/each}}
+    </fieldset>
+</div>

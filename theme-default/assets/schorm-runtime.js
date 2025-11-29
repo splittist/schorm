@@ -51,7 +51,7 @@
       this.api = this.findAPI(window);
       
       if (this.api == null) {
-        console.log('schorm: preview mode - no SCORM API found');
+        console.log('[SCHORM Preview] Preview mode enabled - no SCORM API found');
         this.isPreviewMode = true;
         this.isInitialized = true;
         return true;
@@ -61,10 +61,10 @@
       const result = this.api.Initialize('');
       if (result === 'true') {
         this.isInitialized = true;
-        console.log('schorm: SCORM API initialized');
+        console.log('[SCHORM] SCORM API initialized successfully');
         return true;
       } else {
-        console.error('schorm: Failed to initialize SCORM API');
+        console.error('[SCHORM] Failed to initialize SCORM API');
         return false;
       }
     },
@@ -78,6 +78,7 @@
       }
 
       if (this.isPreviewMode) {
+        console.log('[SCHORM Preview] SCORM getValue:', element, '→ ""');
         return '';
       }
 
@@ -93,7 +94,7 @@
       }
 
       if (this.isPreviewMode) {
-        console.log('schorm: preview mode setValue:', element, '=', value);
+        console.log('[SCHORM Preview] SCORM setValue:', element, '=', value);
         return true;
       }
 
@@ -110,7 +111,7 @@
       }
 
       if (this.isPreviewMode) {
-        console.log('schorm: preview mode commit');
+        console.log('[SCHORM Preview] SCORM commit');
         return true;
       }
 
@@ -122,7 +123,12 @@
      * Terminate SCORM session
      */
     terminate: function() {
-      if (!this.isInitialized || this.isPreviewMode) {
+      if (!this.isInitialized) {
+        return true;
+      }
+
+      if (this.isPreviewMode) {
+        console.log('[SCHORM Preview] SCORM terminate');
         return true;
       }
 
@@ -198,12 +204,13 @@
           timestamp: new Date().toISOString()
         };
 
-        console.log('schorm: preview – markScoComplete quizId="' + quizId + '" result=', resultData);
+        console.log('[SCHORM Preview] Marking SCO complete, quizId="' + quizId + '"', resultData);
 
         try {
           localStorage.setItem('schorm:quiz:' + quizId, JSON.stringify(resultData));
+          console.log('[SCHORM Preview] Quiz result saved to localStorage');
         } catch (e) {
-          console.error('schorm: Failed to save quiz result to localStorage', e);
+          console.error('[SCHORM Preview] Failed to save quiz result to localStorage', e);
         }
       } else {
         // LMS mode: set SCORM data model values
@@ -315,26 +322,45 @@
      */
     evaluateQuestion: function(question, userAnswer) {
       const points = question.points || 1;
+      let result;
       
       switch (question.type) {
         case 'single-choice':
-          return this.evaluateSingleChoice(question, userAnswer, points);
+          result = this.evaluateSingleChoice(question, userAnswer, points);
+          break;
         
         case 'true-false':
-          return this.evaluateTrueFalse(question, userAnswer, points);
+          result = this.evaluateTrueFalse(question, userAnswer, points);
+          break;
         
         case 'multiple-response':
-          return this.evaluateMultipleResponse(question, userAnswer, points);
+          result = this.evaluateMultipleResponse(question, userAnswer, points);
+          break;
         
         case 'fill-blank':
-          return this.evaluateFillBlank(question, userAnswer, points);
+          result = this.evaluateFillBlank(question, userAnswer, points);
+          break;
         
         case 'matching':
-          return this.evaluateMatching(question, userAnswer, points);
+          result = this.evaluateMatching(question, userAnswer, points);
+          break;
         
         default:
-          return { correct: false, score: 0, maxScore: points };
+          result = { correct: false, score: 0, maxScore: points };
       }
+
+      if (SchormRuntime.isPreviewMode) {
+        console.log('[SCHORM Preview] Scoring question:', {
+          questionId: question.id,
+          type: question.type,
+          userAnswer: userAnswer,
+          correct: result.correct,
+          score: result.score,
+          maxScore: result.maxScore
+        });
+      }
+
+      return result;
     },
 
     /**
@@ -596,18 +622,39 @@
       submitButton.addEventListener('click', function(e) {
         e.preventDefault();
 
+        if (SchormRuntime.isPreviewMode) {
+          console.log('[SCHORM Preview] Event: quiz submit button clicked');
+        }
+
         // Collect user answers
         const userAnswers = SchormQuiz.collectUserAnswersFromDom();
+
+        if (SchormRuntime.isPreviewMode) {
+          console.log('[SCHORM Preview] Collected user answers:', userAnswers);
+        }
 
         // Check if all answers are provided
         const completionCheck = SchormQuiz.checkAnswersComplete(quizModel, userAnswers);
         if (!completionCheck.complete) {
+          if (SchormRuntime.isPreviewMode) {
+            console.log('[SCHORM Preview] Incomplete answers, missing:', completionCheck.missingCount);
+          }
           alert('Please answer all questions before submitting.');
           return;
         }
 
         // Evaluate quiz
         const result = SchormQuiz.evaluateQuiz(quizModel, userAnswers);
+
+        if (SchormRuntime.isPreviewMode) {
+          console.log('[SCHORM Preview] Quiz evaluation complete:', {
+            totalScore: result.totalScore,
+            maxScore: result.maxScore,
+            scaledScore: result.scaledScore,
+            passed: result.passed,
+            perQuestion: result.perQuestion
+          });
+        }
 
         // Submit to SCORM/localStorage
         SchormQuiz.submitQuizResult(quizModel.id, result);
@@ -655,7 +702,7 @@
 
         // Log in preview mode
         if (SchormRuntime.isPreviewMode) {
-          console.log('schorm: media completed mediaId="' + mediaId + '"');
+          console.log('[SCHORM Preview] Event: media ended, mediaId="' + mediaId + '"');
         }
 
         // Persist to localStorage in preview mode
@@ -664,7 +711,7 @@
         // Check if all media completed
         if (this.allMediaCompleted()) {
           if (SchormRuntime.isPreviewMode) {
-            console.log('schorm: all media completed');
+            console.log('[SCHORM Preview] All tracked media completed');
           }
         }
       }
@@ -760,7 +807,7 @@
       this._loadPersistedState();
 
       if (SchormRuntime.isPreviewMode && this._trackedMediaIds.length > 0) {
-        console.log('schorm: tracking ' + this._trackedMediaIds.length + ' media element(s)');
+        console.log('[SCHORM Preview] Tracking ' + this._trackedMediaIds.length + ' media element(s):', this._trackedMediaIds);
       }
     },
 
@@ -823,10 +870,26 @@
      * Dump the current media completion state to the console
      */
     dumpMediaState: function() {
-      console.log('schorm: Media Completion State');
+      console.log('[SCHORM Debug] Media Completion State');
       console.log('  Tracked IDs:', SchormMedia._trackedMediaIds);
       console.log('  Completion State:', SchormMedia.getMediaCompletionState());
       console.log('  All Completed:', SchormMedia.allMediaCompleted());
+    },
+
+    /**
+     * Dump the current quiz state to the console
+     */
+    dumpQuizAnswers: function() {
+      const answers = SchormQuiz.collectUserAnswersFromDom();
+      console.log('[SCHORM Debug] Current Quiz Answers:', answers);
+    },
+
+    /**
+     * Check if preview mode is active
+     */
+    isPreviewMode: function() {
+      console.log('[SCHORM Debug] Preview mode:', SchormRuntime.isPreviewMode);
+      return SchormRuntime.isPreviewMode;
     }
   };
 

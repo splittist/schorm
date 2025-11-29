@@ -243,8 +243,7 @@ describe('Quiz Scoring Logic (Runtime)', () => {
     });
 
     it('should log preview mode message with correct format', () => {
-      expect(runtimeCode).toContain('schorm: preview – markScoComplete quizId=');
-      expect(runtimeCode).toContain('result=');
+      expect(runtimeCode).toContain('[SCHORM Preview] Marking SCO complete, quizId=');
     });
 
     it('should set all required SCORM fields in markScoComplete', () => {

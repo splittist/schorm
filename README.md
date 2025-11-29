@@ -106,6 +106,57 @@ The output of schorm build includes:
 
 All of this is zipped by schorm package into a SCORM-compliant bundle.
 
+### Module sequencing and branching schema
+
+`course.yml` supports progressively richer sequencing controls to keep YAML stable and LLM-friendly:
+
+- `mode`: `linear` or `free` navigation for items in the module (defaults to `free`)
+- `gate.quiz`: lock later items until a quiz is passed
+- `branches`: named entry points into a navigation graph
+- `choices`: conditional routes that jump to other items or end the flow
+
+Example combining all options:
+
+```yaml
+modules:
+  - id: m1
+    title: "Role-based onboarding"
+    items:
+      - intro
+      - role-decision
+      - fundamentals
+      - architect-lab
+      - wrap-up
+    sequencing:
+      mode: linear
+      gate:
+        quiz: fundamentals-quiz
+      branches:
+        - id: default-path
+          start: intro
+          choices: [role-path]
+      choices:
+        - id: role-path
+          from: role-decision
+          routes:
+            - label: architect track
+              to: architect-lab
+              condition:
+                variable: learner.role
+                in: [architect, lead]
+            - label: standard track
+              to: fundamentals
+            - label: end-early
+              end: true
+```
+
+Validation protects against invalid references, cycles, and missing targets:
+
+- A `branch.start`, `choice.from`, or `route.to` must refer to an item in `items`
+- `branches.choices` must point to defined choice IDs
+- Routes must either declare `end: true` or a `to` target
+- Conditional routes may not form cycles (e.g., `a -> b -> a`), keeping graphs SCORM-friendly
+
 ## Content Authoring
 
 ### Writing Lessons

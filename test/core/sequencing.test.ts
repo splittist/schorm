@@ -108,6 +108,82 @@ describe('Module Sequencing Validation', () => {
       /sequencing.gate.quiz is required/
     );
   });
+
+  it('should accept module with branching choices and branches', () => {
+    const module: Module = {
+      id: 'm1',
+      title: 'Module 1',
+      items: ['intro', 'decision', 'path-a', 'path-b'],
+      sequencing: {
+        mode: 'free',
+        branches: [
+          { id: 'default', start: 'intro', choices: ['decision-choice'] },
+        ],
+        choices: [
+          {
+            id: 'decision-choice',
+            from: 'decision',
+            routes: [
+              { to: 'path-a', label: 'Path A' },
+              { to: 'path-b', label: 'Path B', end: false },
+              { end: true, label: 'Stop' },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(() => validateModuleSequencing(module)).not.toThrow();
+  });
+
+  it('should reject branching route with unknown target', () => {
+    const module: Module = {
+      id: 'm1',
+      title: 'Module 1',
+      items: ['intro', 'decision'],
+      sequencing: {
+        choices: [
+          {
+            id: 'decision-choice',
+            from: 'decision',
+            routes: [{ to: 'missing-target' }],
+          },
+        ],
+      },
+    };
+
+    expect(() => validateModuleSequencing(module)).toThrow(/route target "missing-target"/);
+  });
+
+  it('should reject branching cycles', () => {
+    const module: Module = {
+      id: 'm1',
+      title: 'Module 1',
+      items: ['a', 'b', 'c'],
+      sequencing: {
+        choices: [
+          { id: 'choice-a', from: 'a', routes: [{ to: 'b' }] },
+          { id: 'choice-b', from: 'b', routes: [{ to: 'a' }] },
+        ],
+      },
+    };
+
+    expect(() => validateModuleSequencing(module)).toThrow(/create a cycle/);
+  });
+
+  it('should reject branches referencing missing choices', () => {
+    const module: Module = {
+      id: 'm1',
+      title: 'Module 1',
+      items: ['intro'],
+      sequencing: {
+        branches: [{ id: 'default', start: 'intro', choices: ['unknown-choice'] }],
+        choices: [],
+      },
+    };
+
+    expect(() => validateModuleSequencing(module)).toThrow(/references unknown choice "unknown-choice"/);
+  });
 });
 
 describe('Manifest Sequencing Generation', () => {

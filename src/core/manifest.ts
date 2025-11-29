@@ -3,7 +3,7 @@
  */
 
 import { create } from 'xmlbuilder2';
-import type { Course, Lesson, Module, ModuleSequencing } from './course-model.js';
+import type { Course, Lesson, Module } from './course-model.js';
 import type { MediaFile } from './media.js';
 import type { Quiz } from './quiz-model.js';
 
@@ -302,7 +302,7 @@ function buildItemSequencing(
   module: Module,
   itemId: string,
   itemIndex: number,
-  isQuiz: boolean
+  _isQuiz: boolean
 ): ItemSequencing | undefined {
   const sequencing = module.sequencing;
   if (!sequencing) {
@@ -328,12 +328,15 @@ function buildItemSequencing(
     // If this item is the gate quiz, it needs to write to the global objective
     if (itemId === gateQuizId) {
       const globalObjectiveId = `${module.id}-gate-passed`;
+      // Use the default SCORM passing score (0.8 = 80%)
+      // This matches the default in schorm-runtime.js SchormQuiz.DEFAULT_PASSING_SCORE
+      const DEFAULT_PASSING_SCORE = 0.8;
       itemSeq.objectives = [
         {
           objectiveID: `local-${itemId}-passed`,
           isPrimary: true,
           satisfiedByMeasure: true,
-          minNormalizedMeasure: 0.8,
+          minNormalizedMeasure: DEFAULT_PASSING_SCORE,
           mapInfo: [
             {
               targetObjectiveID: globalObjectiveId,

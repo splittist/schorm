@@ -32,7 +32,8 @@ export interface ModuleSequencing {
 
   /**
    * Quiz gate configuration - require passing a quiz before accessing later items
-   * Only applies when mode is 'linear' or 'gated'
+   * When specified with mode 'linear', items after the gate quiz are disabled
+   * until the quiz is passed
    */
   gate?: {
     /**

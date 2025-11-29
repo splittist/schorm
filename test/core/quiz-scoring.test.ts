@@ -206,6 +206,11 @@ describe('Quiz Scoring Logic (Runtime)', () => {
       expect(runtimeCode).toContain('0.8');
     });
 
+    it('should validate scaledScore is a number', () => {
+      expect(runtimeCode).toContain("typeof scaledScore === 'number'");
+      expect(runtimeCode).toContain('isNaN(scaledScore)');
+    });
+
     it('should clamp scaledScore to [0, 1]', () => {
       expect(runtimeCode).toContain('Math.max(0, Math.min(1');
     });
@@ -223,6 +228,18 @@ describe('Quiz Scoring Logic (Runtime)', () => {
   describe('markScoComplete Helper', () => {
     it('should define markScoComplete function', () => {
       expect(runtimeCode).toContain('markScoComplete');
+    });
+
+    it('should validate result object', () => {
+      expect(runtimeCode).toContain("typeof result !== 'object'");
+      expect(runtimeCode).toContain('markScoComplete called with invalid result object');
+    });
+
+    it('should extract values with type validation', () => {
+      expect(runtimeCode).toContain("typeof result.totalScore === 'number'");
+      expect(runtimeCode).toContain("typeof result.maxScore === 'number'");
+      expect(runtimeCode).toContain("typeof result.scaledScore === 'number'");
+      expect(runtimeCode).toContain("typeof result.passed === 'boolean'");
     });
 
     it('should log preview mode message with correct format', () => {

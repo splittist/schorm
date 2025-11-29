@@ -156,8 +156,11 @@
       // Use default passing score if not provided
       const threshold = (typeof passingScore === 'number') ? passingScore : this.DEFAULT_PASSING_SCORE;
       
-      // Clamp scaledScore to [0, 1]
-      const clampedScore = Math.max(0, Math.min(1, scaledScore));
+      // Validate scaledScore is a number, default to 0 if not
+      const score = (typeof scaledScore === 'number' && !isNaN(scaledScore)) ? scaledScore : 0;
+      
+      // Clamp score to [0, 1]
+      const clampedScore = Math.max(0, Math.min(1, score));
       
       return clampedScore >= threshold;
     },
@@ -169,6 +172,18 @@
      * @param {Object} result - QuizResult object with totalScore, maxScore, scaledScore, passed
      */
     markScoComplete: function(quizId, result) {
+      // Validate result object
+      if (!result || typeof result !== 'object') {
+        console.error('schorm: markScoComplete called with invalid result object');
+        return;
+      }
+
+      // Extract values with defaults for missing properties
+      const totalScore = (typeof result.totalScore === 'number') ? result.totalScore : 0;
+      const maxScore = (typeof result.maxScore === 'number') ? result.maxScore : 0;
+      const scaledScore = (typeof result.scaledScore === 'number') ? result.scaledScore : 0;
+      const passed = (typeof result.passed === 'boolean') ? result.passed : false;
+
       // Ensure SCORM is initialized
       SchormRuntime.init();
 
@@ -176,10 +191,10 @@
         // Preview mode: log and store in localStorage
         const resultData = {
           quizId: quizId,
-          totalScore: result.totalScore,
-          maxScore: result.maxScore,
-          scaledScore: result.scaledScore,
-          passed: result.passed,
+          totalScore: totalScore,
+          maxScore: maxScore,
+          scaledScore: scaledScore,
+          passed: passed,
           timestamp: new Date().toISOString()
         };
 
@@ -192,10 +207,10 @@
         }
       } else {
         // LMS mode: set SCORM data model values
-        SchormRuntime.setValue('cmi.score.raw', result.totalScore.toString());
-        SchormRuntime.setValue('cmi.score.max', result.maxScore.toString());
-        SchormRuntime.setValue('cmi.score.scaled', result.scaledScore.toFixed(2));
-        SchormRuntime.setValue('cmi.success_status', result.passed ? 'passed' : 'failed');
+        SchormRuntime.setValue('cmi.score.raw', totalScore.toString());
+        SchormRuntime.setValue('cmi.score.max', maxScore.toString());
+        SchormRuntime.setValue('cmi.score.scaled', scaledScore.toFixed(2));
+        SchormRuntime.setValue('cmi.success_status', passed ? 'passed' : 'failed');
         SchormRuntime.setValue('cmi.completion_status', 'completed');
         SchormRuntime.commit();
       }

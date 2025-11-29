@@ -98,7 +98,7 @@ More content here.
 
     // Verify media was rendered (not as placeholder, but as actual media block)
     expect(html).not.toContain('<schorm-media');
-    expect(html).toContain('<div class="media-block audio">');
+    expect(html).toContain('class="media-block audio');
     expect(html).toContain('<audio controls>');
     // Path should be normalized to media/m1/sample.mp3
     expect(html).toContain('src="media/m1/sample.mp3"');
@@ -177,7 +177,7 @@ That's all!
     // Verify the shortcode was processed
     expect(html).not.toContain('{{video');
     expect(html).not.toContain('<schorm-media');
-    expect(html).toContain('<div class="media-block video">');
+    expect(html).toContain('class="media-block video');
     expect(html).toContain('<video controls');
     // Paths should be normalized to media/m1/
     expect(html).toContain('poster="media/m1/poster.jpg"');
@@ -350,7 +350,7 @@ This is **bold** and this is *italic*.
     // Verify media shortcode was processed
     expect(html).not.toContain('<schorm-media');
     expect(html).not.toContain('{{audio');
-    expect(html).toContain('<div class="media-block audio">');
+    expect(html).toContain('class="media-block audio');
     expect(html).toContain('<audio controls>');
   });
 });

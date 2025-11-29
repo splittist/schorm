@@ -622,6 +622,212 @@
   };
 
   // ============================================================================
+  // Media Completion Tracking
+  // ============================================================================
+
+  const SchormMedia = {
+    /**
+     * Internal state for media completion tracking
+     * Structure: { [mediaId: string]: { completed: boolean, completedAt?: number } }
+     */
+    _completionState: {},
+
+    /**
+     * List of all tracked media IDs on the current page
+     */
+    _trackedMediaIds: [],
+
+    /**
+     * Mark a media item as completed
+     * @param {string} mediaId - The ID of the media item
+     */
+    markMediaCompleted: function(mediaId) {
+      if (!mediaId) {
+        return;
+      }
+
+      // Idempotent: only update if not already completed
+      if (!this._completionState[mediaId] || !this._completionState[mediaId].completed) {
+        this._completionState[mediaId] = {
+          completed: true,
+          completedAt: Date.now()
+        };
+
+        // Log in preview mode
+        if (SchormRuntime.isPreviewMode) {
+          console.log('schorm: media completed mediaId="' + mediaId + '"');
+        }
+
+        // Persist to localStorage in preview mode
+        this._persistState();
+
+        // Check if all media completed
+        if (this.allMediaCompleted()) {
+          if (SchormRuntime.isPreviewMode) {
+            console.log('schorm: all media completed');
+          }
+        }
+      }
+    },
+
+    /**
+     * Check if a media item has been completed
+     * @param {string} mediaId - The ID of the media item
+     * @returns {boolean} True if the media has been completed
+     */
+    isMediaCompleted: function(mediaId) {
+      if (!mediaId) {
+        return false;
+      }
+      return !!(this._completionState[mediaId] && this._completionState[mediaId].completed);
+    },
+
+    /**
+     * Get the full completion state for all tracked media
+     * @returns {Object} MediaCompletionState object
+     */
+    getMediaCompletionState: function() {
+      // Return a copy to prevent external modification
+      var state = {};
+      for (var key in this._completionState) {
+        if (this._completionState.hasOwnProperty(key)) {
+          state[key] = {
+            completed: this._completionState[key].completed,
+            completedAt: this._completionState[key].completedAt
+          };
+        }
+      }
+      return state;
+    },
+
+    /**
+     * Check if all tracked media items have been completed
+     * @returns {boolean} True if all media have been completed
+     */
+    allMediaCompleted: function() {
+      if (this._trackedMediaIds.length === 0) {
+        return true;
+      }
+
+      for (var i = 0; i < this._trackedMediaIds.length; i++) {
+        var mediaId = this._trackedMediaIds[i];
+        if (!this.isMediaCompleted(mediaId)) {
+          return false;
+        }
+      }
+      return true;
+    },
+
+    /**
+     * Initialize media completion tracking
+     * Finds all .schorm-media[data-id] elements and attaches event listeners
+     */
+    initMediaCompletionTracking: function() {
+      var self = this;
+
+      // Reset state
+      this._completionState = {};
+      this._trackedMediaIds = [];
+
+      // Find all media containers with data-id
+      var mediaContainers = document.querySelectorAll('.schorm-media[data-id]');
+
+      mediaContainers.forEach(function(container) {
+        var mediaId = container.dataset.id;
+        if (!mediaId) {
+          return;
+        }
+
+        // Track this media ID
+        self._trackedMediaIds.push(mediaId);
+
+        // Find nested audio or video element
+        var mediaElement = container.querySelector('audio, video');
+        if (!mediaElement) {
+          return;
+        }
+
+        // Attach ended event listener
+        mediaElement.addEventListener('ended', function() {
+          self.markMediaCompleted(mediaId);
+        });
+      });
+
+      // Load persisted state from localStorage in preview mode
+      this._loadPersistedState();
+
+      if (SchormRuntime.isPreviewMode && this._trackedMediaIds.length > 0) {
+        console.log('schorm: tracking ' + this._trackedMediaIds.length + ' media element(s)');
+      }
+    },
+
+    /**
+     * Get the storage key for persisting media state
+     * @returns {string} localStorage key
+     */
+    _getStorageKey: function() {
+      // Use the page path as a simple SCO identifier
+      return 'schorm:media:' + window.location.pathname;
+    },
+
+    /**
+     * Persist completion state to localStorage (preview mode only)
+     */
+    _persistState: function() {
+      if (!SchormRuntime.isPreviewMode) {
+        return;
+      }
+
+      try {
+        localStorage.setItem(this._getStorageKey(), JSON.stringify(this._completionState));
+      } catch (e) {
+        console.error('schorm: Failed to persist media state', e);
+      }
+    },
+
+    /**
+     * Load persisted state from localStorage (preview mode only)
+     */
+    _loadPersistedState: function() {
+      if (!SchormRuntime.isPreviewMode) {
+        return;
+      }
+
+      try {
+        var stored = localStorage.getItem(this._getStorageKey());
+        if (stored) {
+          var parsed = JSON.parse(stored);
+          // Merge persisted state (only for tracked media IDs)
+          for (var i = 0; i < this._trackedMediaIds.length; i++) {
+            var mediaId = this._trackedMediaIds[i];
+            if (parsed[mediaId] && parsed[mediaId].completed) {
+              this._completionState[mediaId] = parsed[mediaId];
+            }
+          }
+        }
+      } catch (e) {
+        console.error('schorm: Failed to load persisted media state', e);
+      }
+    }
+  };
+
+  // ============================================================================
+  // Debug Helpers
+  // ============================================================================
+
+  const SchormDebug = {
+    /**
+     * Dump the current media completion state to the console
+     */
+    dumpMediaState: function() {
+      console.log('schorm: Media Completion State');
+      console.log('  Tracked IDs:', SchormMedia._trackedMediaIds);
+      console.log('  Completion State:', SchormMedia.getMediaCompletionState());
+      console.log('  All Completed:', SchormMedia.allMediaCompleted());
+    }
+  };
+
+  // ============================================================================
   // Auto-initialization
   // ============================================================================
 
@@ -629,13 +835,17 @@
     document.addEventListener('DOMContentLoaded', function() {
       SchormRuntime.init();
       SchormQuiz.initQuizSubmit();
+      SchormMedia.initMediaCompletionTracking();
     });
   } else {
     SchormRuntime.init();
     SchormQuiz.initQuizSubmit();
+    SchormMedia.initMediaCompletionTracking();
   }
 
   // Export for use in page scripts
   window.SchormRuntime = SchormRuntime;
   window.SchormQuiz = SchormQuiz;
+  window.SchormMedia = SchormMedia;
+  window.schormDebug = SchormDebug;
 })();

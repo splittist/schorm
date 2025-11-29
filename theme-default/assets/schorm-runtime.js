@@ -141,6 +141,67 @@
 
   const SchormQuiz = {
     /**
+     * Default passing score threshold (80%)
+     */
+    DEFAULT_PASSING_SCORE: 0.8,
+
+    /**
+     * Decide if a quiz result is a "pass".
+     *
+     * @param {number} scaledScore - number in [0, 1] (e.g. 0.8 for 80%)
+     * @param {number} [passingScore] - number in [0, 1], default 0.8
+     * @returns {boolean} true if scaledScore >= passingScore
+     */
+    quizPassed: function(scaledScore, passingScore) {
+      // Use default passing score if not provided
+      const threshold = (typeof passingScore === 'number') ? passingScore : this.DEFAULT_PASSING_SCORE;
+      
+      // Clamp scaledScore to [0, 1]
+      const clampedScore = Math.max(0, Math.min(1, scaledScore));
+      
+      return clampedScore >= threshold;
+    },
+
+    /**
+     * Set SCORM 2004 completion/success/score fields for the current SCO and commit them.
+     *
+     * @param {string} quizId - Quiz identifier
+     * @param {Object} result - QuizResult object with totalScore, maxScore, scaledScore, passed
+     */
+    markScoComplete: function(quizId, result) {
+      // Ensure SCORM is initialized
+      SchormRuntime.init();
+
+      if (SchormRuntime.isPreviewMode) {
+        // Preview mode: log and store in localStorage
+        const resultData = {
+          quizId: quizId,
+          totalScore: result.totalScore,
+          maxScore: result.maxScore,
+          scaledScore: result.scaledScore,
+          passed: result.passed,
+          timestamp: new Date().toISOString()
+        };
+
+        console.log('schorm: preview – markScoComplete quizId="' + quizId + '" result=', resultData);
+
+        try {
+          localStorage.setItem('schorm:quiz:' + quizId, JSON.stringify(resultData));
+        } catch (e) {
+          console.error('schorm: Failed to save quiz result to localStorage', e);
+        }
+      } else {
+        // LMS mode: set SCORM data model values
+        SchormRuntime.setValue('cmi.score.raw', result.totalScore.toString());
+        SchormRuntime.setValue('cmi.score.max', result.maxScore.toString());
+        SchormRuntime.setValue('cmi.score.scaled', result.scaledScore.toFixed(2));
+        SchormRuntime.setValue('cmi.success_status', result.passed ? 'passed' : 'failed');
+        SchormRuntime.setValue('cmi.completion_status', 'completed');
+        SchormRuntime.commit();
+      }
+    },
+
+    /**
      * Collect user answers from the DOM
      * @returns {Object} Map of question ID to user answer
      */
@@ -395,8 +456,8 @@
       }
 
       const scaledScore = maxScore > 0 ? totalScore / maxScore : 0;
-      const passingScore = quizModel.passing_score || 0.8;
-      const passed = scaledScore >= passingScore;
+      const passingScore = quizModel.passing_score || this.DEFAULT_PASSING_SCORE;
+      const passed = this.quizPassed(scaledScore, passingScore);
 
       return {
         totalScore: totalScore,
@@ -413,35 +474,8 @@
      * @param {Object} result - QuizResult object
      */
     submitQuizResult: function(quizId, result) {
-      // Ensure SCORM is initialized
-      SchormRuntime.init();
-
-      if (SchormRuntime.isPreviewMode) {
-        // Store in localStorage for preview mode
-        const resultData = {
-          quizId: quizId,
-          totalScore: result.totalScore,
-          maxScore: result.maxScore,
-          scaledScore: result.scaledScore,
-          passed: result.passed,
-          timestamp: new Date().toISOString()
-        };
-        
-        try {
-          localStorage.setItem('schorm:quiz:' + quizId, JSON.stringify(resultData));
-          console.log('schorm: preview mode – quiz "' + quizId + '" result', resultData);
-        } catch (e) {
-          console.error('schorm: Failed to save quiz result to localStorage', e);
-        }
-      } else {
-        // Submit to SCORM API
-        SchormRuntime.setValue('cmi.score.raw', result.totalScore.toString());
-        SchormRuntime.setValue('cmi.score.max', result.maxScore.toString());
-        SchormRuntime.setValue('cmi.score.scaled', result.scaledScore.toFixed(2));
-        SchormRuntime.setValue('cmi.success_status', result.passed ? 'passed' : 'failed');
-        SchormRuntime.setValue('cmi.completion_status', 'completed');
-        SchormRuntime.commit();
-      }
+      // Delegate to markScoComplete for SCORM API handling
+      this.markScoComplete(quizId, result);
     },
 
     /**

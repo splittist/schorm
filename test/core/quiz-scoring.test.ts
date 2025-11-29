@@ -195,4 +195,80 @@ describe('Quiz Scoring Logic (Runtime)', () => {
       expect(runtimeCode).toContain('preview mode');
     });
   });
+
+  describe('quizPassed Helper', () => {
+    it('should define quizPassed function', () => {
+      expect(runtimeCode).toContain('quizPassed');
+    });
+
+    it('should define DEFAULT_PASSING_SCORE constant', () => {
+      expect(runtimeCode).toContain('DEFAULT_PASSING_SCORE');
+      expect(runtimeCode).toContain('0.8');
+    });
+
+    it('should clamp scaledScore to [0, 1]', () => {
+      expect(runtimeCode).toContain('Math.max(0, Math.min(1');
+    });
+
+    it('should use default threshold when passingScore not provided', () => {
+      expect(runtimeCode).toContain("typeof passingScore === 'number'");
+      expect(runtimeCode).toContain('this.DEFAULT_PASSING_SCORE');
+    });
+
+    it('should compare clampedScore against threshold', () => {
+      expect(runtimeCode).toContain('clampedScore >= threshold');
+    });
+  });
+
+  describe('markScoComplete Helper', () => {
+    it('should define markScoComplete function', () => {
+      expect(runtimeCode).toContain('markScoComplete');
+    });
+
+    it('should log preview mode message with correct format', () => {
+      expect(runtimeCode).toContain('schorm: preview – markScoComplete quizId=');
+      expect(runtimeCode).toContain('result=');
+    });
+
+    it('should set all required SCORM fields in markScoComplete', () => {
+      // Verify markScoComplete sets all necessary SCORM fields
+      expect(runtimeCode).toContain("SchormRuntime.setValue('cmi.score.raw'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue('cmi.score.max'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue('cmi.score.scaled'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue('cmi.success_status'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue('cmi.completion_status'");
+    });
+
+    it('should call commit after setting SCORM fields', () => {
+      expect(runtimeCode).toContain('SchormRuntime.commit()');
+    });
+
+    it('should store result in localStorage for preview mode', () => {
+      expect(runtimeCode).toContain("localStorage.setItem('schorm:quiz:'");
+    });
+
+    it('should include quizId in result data', () => {
+      expect(runtimeCode).toContain('quizId: quizId');
+    });
+
+    it('should include timestamp in result data', () => {
+      expect(runtimeCode).toContain('timestamp: new Date().toISOString()');
+    });
+  });
+
+  describe('submitQuizResult Integration', () => {
+    it('should delegate submitQuizResult to markScoComplete', () => {
+      expect(runtimeCode).toContain('this.markScoComplete(quizId, result)');
+    });
+  });
+
+  describe('evaluateQuiz Integration', () => {
+    it('should use quizPassed helper in evaluateQuiz', () => {
+      expect(runtimeCode).toContain('this.quizPassed(scaledScore, passingScore)');
+    });
+
+    it('should use DEFAULT_PASSING_SCORE in evaluateQuiz', () => {
+      expect(runtimeCode).toContain('quizModel.passing_score || this.DEFAULT_PASSING_SCORE');
+    });
+  });
 });

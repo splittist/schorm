@@ -254,6 +254,118 @@ main {
   margin-bottom: var(--spacing-unit);
 }
 
+/* schorm Quiz Partials */
+.schorm-question {
+  background-color: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: var(--spacing-unit);
+  margin-bottom: calc(var(--spacing-unit) * 1.5);
+}
+
+.schorm-question-number {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--secondary-color);
+  margin-bottom: 0.5rem;
+}
+
+.schorm-question-prompt {
+  font-size: 1.1rem;
+  margin-bottom: var(--spacing-unit);
+}
+
+.schorm-question fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.schorm-question fieldset legend.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.schorm-option {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 0.5rem;
+}
+
+.schorm-option:hover {
+  background-color: #f1f5f9;
+}
+
+.schorm-option input[type="radio"],
+.schorm-option input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.schorm-option:focus-within {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.schorm-fill-blank {
+  line-height: 2;
+  font-size: 1.1rem;
+}
+
+.schorm-matching {
+  width: 100%;
+}
+
+.schorm-match-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-unit);
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.schorm-premise {
+  flex: 1;
+  min-width: 150px;
+}
+
+.schorm-match-row select {
+  flex: 1;
+  min-width: 150px;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.schorm-match-row select:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.schorm-question-feedback {
+  margin-top: var(--spacing-unit);
+  padding: 0;
+}
+
+.schorm-question-feedback:not(:empty) {
+  padding: var(--spacing-unit);
+  border-radius: 4px;
+  background-color: #f1f5f9;
+}
+
 /* Navigation */
 .lesson-navigation,
 .quiz-navigation {

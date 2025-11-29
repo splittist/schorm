@@ -54,4 +54,27 @@ describe('TemplateEngine Helpers', () => {
       expect(result).toBe('NOT EQUAL');
     });
   });
+
+  describe('add1 helper', () => {
+    it('should add 1 to a number', () => {
+      const engine = new TemplateEngine();
+      const template = '{{add1 index}}';
+      const result = engine.render(template, { index: 0 });
+      expect(result).toBe('1');
+    });
+
+    it('should convert 0-based index to 1-based', () => {
+      const engine = new TemplateEngine();
+      const template = 'Question {{add1 index}}';
+      const result = engine.render(template, { index: 2 });
+      expect(result).toBe('Question 3');
+    });
+
+    it('should handle non-number by returning 1', () => {
+      const engine = new TemplateEngine();
+      const template = '{{add1 value}}';
+      const result = engine.render(template, { value: 'not-a-number' });
+      expect(result).toBe('1');
+    });
+  });
 });

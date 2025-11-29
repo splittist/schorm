@@ -1,0 +1,26 @@
+<div class="matching-question">
+    <div class="matching-pairs">
+        <fieldset class="schorm-matching">
+            <legend class="sr-only">{{{question.prompt}}}</legend>
+            
+            {{#each question.premises}}
+            <div class="matching-row schorm-match-row" data-premise-id="{{id}}">
+                <div class="premise">
+                    <span class="premise-text schorm-premise">{{{text}}}</span>
+                </div>
+                <div class="response-selector">
+                    <select data-premise-id="{{id}}" name="matching-{{../question.id}}-{{id}}" class="matching-select">
+                        <option value="">— Choose —</option>
+                        {{#each ../question.responses}}
+                        <option value="{{id}}">
+                            {{{text}}}
+                        </option>
+                        {{/each}}
+                    </select>
+                </div>
+            </div>
+            {{/each}}
+        </fieldset>
+    </div>
+    <span class="correct-pairs-data" style="display:none;" data-correct-pairs="{{jsonStringify question.correct_pairs}}"></span>
+</div>

@@ -1,0 +1,22 @@
+<div class="schorm-question question" data-question-id="{{question.id}}" data-question-type="{{question.type}}">
+    <h3 class="schorm-question-number">Question {{add1 index}}</h3>
+    <div class="schorm-question-prompt question-text">{{{question.prompt}}}</div>
+    
+    {{#if (eq question.type "single-choice")}}
+        {{> quiz/single-choice question=question}}
+    {{/if}}
+    {{#if (eq question.type "multiple-response")}}
+        {{> quiz/multiple-response question=question}}
+    {{/if}}
+    {{#if (eq question.type "true-false")}}
+        {{> quiz/true-false question=question}}
+    {{/if}}
+    {{#if (eq question.type "fill-blank")}}
+        {{> quiz/fill-blank question=question}}
+    {{/if}}
+    {{#if (eq question.type "matching")}}
+        {{> quiz/matching question=question}}
+    {{/if}}
+    
+    <div class="schorm-question-feedback" data-feedback-for="{{question.id}}"></div>
+</div>

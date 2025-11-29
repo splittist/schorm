@@ -41,6 +41,14 @@ export class TemplateEngine {
       }
     });
 
+    // Register 'add1' helper to convert 0-based index to 1-based
+    this.handlebars.registerHelper('add1', (index: unknown) => {
+      if (typeof index === 'number') {
+        return index + 1;
+      }
+      return 1;
+    });
+
     // Register 'parseFillBlanks' helper to convert [[blankX]] markers to input fields
     this.handlebars.registerHelper('parseFillBlanks', (text: string, blanks: unknown) => {
       if (!text || typeof text !== 'string') {
@@ -115,11 +123,23 @@ export class TemplateEngine {
       return;
     }
 
-    const files = fs.readdirSync(partialsDir);
-    for (const file of files) {
-      if (file.endsWith('.html')) {
-        const partialName = path.basename(file, '.html');
-        const partialContent = fs.readFileSync(path.join(partialsDir, file), 'utf-8');
+    this.loadPartialsRecursive(partialsDir, '');
+  }
+
+  private loadPartialsRecursive(baseDir: string, prefix: string): void {
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(baseDir, entry.name);
+      if (entry.isDirectory()) {
+        // Recursively load partials from subdirectories
+        const newPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+        this.loadPartialsRecursive(fullPath, newPrefix);
+      } else if (entry.name.endsWith('.html') || entry.name.endsWith('.hbs')) {
+        // Support both .html and .hbs extensions
+        const ext = entry.name.endsWith('.html') ? '.html' : '.hbs';
+        const baseName = path.basename(entry.name, ext);
+        const partialName = prefix ? `${prefix}/${baseName}` : baseName;
+        const partialContent = fs.readFileSync(fullPath, 'utf-8');
         this.registerPartial(partialName, partialContent);
       }
     }

@@ -351,7 +351,7 @@ export const buildCommand = new Command('build')
       // Step 9: Generate manifest
       log('📜 Generating SCORM manifest...');
       try {
-        const manifest = buildManifestFromCourse(course, lessons, mediaFiles);
+        const manifest = buildManifestFromCourse(course, lessons, mediaFiles, quizzes);
         const manifestPath = path.join(outputDir, 'imsmanifest.xml');
         fs.writeFileSync(manifestPath, manifest, 'utf-8');
         log(`   ✓ imsmanifest.xml\n`);

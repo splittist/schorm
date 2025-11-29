@@ -212,6 +212,15 @@
         SchormRuntime.setValue('cmi.score.scaled', scaledScore.toFixed(2));
         SchormRuntime.setValue('cmi.success_status', passed ? 'passed' : 'failed');
         SchormRuntime.setValue('cmi.completion_status', 'completed');
+
+        // Set the primary objective status for sequencing support
+        // This enables quiz-gated progression via SCORM 2004 sequencing
+        // The objective ID format matches what the manifest generator creates
+        SchormRuntime.setValue('cmi.objectives.0.id', 'local-' + quizId + '-passed');
+        SchormRuntime.setValue('cmi.objectives.0.success_status', passed ? 'passed' : 'failed');
+        SchormRuntime.setValue('cmi.objectives.0.completion_status', 'completed');
+        SchormRuntime.setValue('cmi.objectives.0.score.scaled', scaledScore.toFixed(2));
+
         SchormRuntime.commit();
       }
     },

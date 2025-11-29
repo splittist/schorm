@@ -71,6 +71,14 @@ describe('Media Completion Tracking (Runtime)', () => {
     it('should handle missing data-id gracefully', () => {
       expect(runtimeCode).toContain('if (!mediaId)');
     });
+
+    it('should use getAttribute for browser compatibility', () => {
+      expect(runtimeCode).toContain("container.getAttribute('data-id')");
+    });
+
+    it('should use traditional for loop for browser compatibility', () => {
+      expect(runtimeCode).toContain('for (var i = 0; i < mediaContainers.length; i++)');
+    });
   });
 
   describe('Completion State Management', () => {

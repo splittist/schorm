@@ -732,10 +732,11 @@
       // Find all media containers with data-id
       var mediaContainers = document.querySelectorAll('.schorm-media[data-id]');
 
-      mediaContainers.forEach(function(container) {
-        var mediaId = container.dataset.id;
+      for (var i = 0; i < mediaContainers.length; i++) {
+        var container = mediaContainers[i];
+        var mediaId = container.getAttribute('data-id');
         if (!mediaId) {
-          return;
+          continue;
         }
 
         // Track this media ID
@@ -744,14 +745,16 @@
         // Find nested audio or video element
         var mediaElement = container.querySelector('audio, video');
         if (!mediaElement) {
-          return;
+          continue;
         }
 
-        // Attach ended event listener
-        mediaElement.addEventListener('ended', function() {
-          self.markMediaCompleted(mediaId);
-        });
-      });
+        // Attach ended event listener using closure to capture mediaId
+        (function(id) {
+          mediaElement.addEventListener('ended', function() {
+            self.markMediaCompleted(id);
+          });
+        })(mediaId);
+      }
 
       // Load persisted state from localStorage in preview mode
       this._loadPersistedState();

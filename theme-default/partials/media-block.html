@@ -1,4 +1,4 @@
-<div class="media-block {{media.type}}">
+<div class="media-block {{media.type}}{{#if media.id}} schorm-media{{/if}}"{{#if media.id}} data-id="{{media.id}}"{{/if}}>
     {{#if (eq media.type "image")}}
     <figure>
         <img src="{{media.src}}" alt="{{media.title}}">

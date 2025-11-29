@@ -41,6 +41,76 @@ export interface ModuleSequencing {
      */
     quiz: string;
   };
+
+  /**
+   * Optional branching navigation graph
+   * Branches declare named entry points, while choices define conditional routes between items
+   */
+  branches?: BranchDefinition[];
+
+  /**
+   * Choice sets that route learners to other items or to an end state
+   */
+  choices?: BranchChoice[];
+}
+
+type BranchScalar = string | number | boolean;
+
+export interface BranchCondition {
+  /** Variable name that should be inspected for routing */
+  variable: string;
+  /**
+   * Equals comparison for the variable
+   */
+  equals?: BranchScalar;
+  /**
+   * Not-equals comparison for the variable
+   */
+  notEquals?: BranchScalar;
+  /**
+   * Inclusive set comparison
+   */
+  in?: BranchScalar[];
+  /**
+   * Exclusive set comparison
+   */
+  notIn?: BranchScalar[];
+}
+
+export interface BranchRoute {
+  /** Target lesson/quiz ID for the route. Required unless end is true */
+  to?: string;
+  /** Optional condition(s) that must be satisfied for this route */
+  condition?: BranchCondition;
+  conditions?: BranchCondition[];
+  /**
+   * Mark this route as an end state. When true, no target item is required and navigation stops.
+   */
+  end?: boolean;
+  /** Optional human-readable label */
+  label?: string;
+}
+
+export interface BranchChoice {
+  /** Unique identifier for the choice set */
+  id: string;
+  /** Item ID from which this choice set is evaluated */
+  from: string;
+  /** Available routes from this item */
+  routes: BranchRoute[];
+  /** Description for documentation or UI hints */
+  description?: string;
+}
+
+export interface BranchDefinition {
+  /** Unique identifier for the branch */
+  id: string;
+  /** Starting item for the branch */
+  start: string;
+  /** Choice sets relevant to this branch (if omitted, all choices apply) */
+  choices?: string[];
+  /** Optional summary to help authors */
+  description?: string;
 }
 
 export interface Module {
@@ -161,6 +231,244 @@ export function validateModuleSequencing(module: Module): void {
     if (!module.items.includes(sequencing.gate.quiz)) {
       throw new Error(
         `Module "${module.id}": sequencing.gate.quiz "${sequencing.gate.quiz}" is not in the module's items`
+      );
+    }
+  }
+
+  validateBranchingSequencing(module);
+}
+
+function validateBranchCondition(condition: BranchCondition, moduleId: string): void {
+  if (!condition || typeof condition !== 'object') {
+    throw new Error(`Module "${moduleId}": branch condition must be an object`);
+  }
+
+  if (typeof condition.variable !== 'string' || !condition.variable.trim()) {
+    throw new Error(`Module "${moduleId}": branch condition.variable must be a non-empty string`);
+  }
+
+  const hasComparator =
+    condition.equals !== undefined ||
+    condition.notEquals !== undefined ||
+    (Array.isArray(condition.in) && condition.in.length > 0) ||
+    (Array.isArray(condition.notIn) && condition.notIn.length > 0);
+
+  if (!hasComparator) {
+    throw new Error(
+      `Module "${moduleId}": branch condition for "${condition.variable}" must include a comparator (equals, notEquals, in, or notIn)`
+    );
+  }
+
+  const validateScalarArray = (values: unknown, label: string): void => {
+    if (values === undefined) {
+      return;
+    }
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error(`Module "${moduleId}": branch condition.${label} must be a non-empty array`);
+    }
+    for (const value of values) {
+      if (!['string', 'number', 'boolean'].includes(typeof value)) {
+        throw new Error(
+          `Module "${moduleId}": branch condition.${label} values must be string, number, or boolean`
+        );
+      }
+    }
+  };
+
+  validateScalarArray(condition.in, 'in');
+  validateScalarArray(condition.notIn, 'notIn');
+}
+
+function validateBranchingSequencing(module: Module): void {
+  const sequencing = module.sequencing;
+  if (!sequencing) {
+    return;
+  }
+
+  const { branches, choices } = sequencing;
+  if (!branches && !choices) {
+    return;
+  }
+
+  const choiceMap = new Map<string, BranchChoice>();
+
+  if (choices !== undefined) {
+    if (!Array.isArray(choices)) {
+      throw new Error(`Module "${module.id}": sequencing.choices must be an array`);
+    }
+
+    for (const choice of choices) {
+      if (!choice || typeof choice !== 'object') {
+        throw new Error(`Module "${module.id}": each choice must be an object`);
+      }
+      if (typeof choice.id !== 'string' || !choice.id.trim()) {
+        throw new Error(`Module "${module.id}": sequencing.choices[].id must be a non-empty string`);
+      }
+      if (choiceMap.has(choice.id)) {
+        throw new Error(`Module "${module.id}": duplicate choice id "${choice.id}"`);
+      }
+      if (typeof choice.from !== 'string' || !choice.from.trim()) {
+        throw new Error(`Module "${module.id}": sequencing.choices[].from must be a non-empty string`);
+      }
+      if (!module.items.includes(choice.from)) {
+        throw new Error(
+          `Module "${module.id}": sequencing choice "${choice.id}" references unknown item "${choice.from}"`
+        );
+      }
+      if (!Array.isArray(choice.routes) || choice.routes.length === 0) {
+        throw new Error(
+          `Module "${module.id}": sequencing choice "${choice.id}" must include at least one route`
+        );
+      }
+
+      for (const route of choice.routes) {
+        if (!route || typeof route !== 'object') {
+          throw new Error(
+            `Module "${module.id}": sequencing choice "${choice.id}" routes must be objects`
+          );
+        }
+
+        const isEnd = route.end === true;
+
+        if (!isEnd) {
+          if (!route.to || typeof route.to !== 'string') {
+            throw new Error(
+              `Module "${module.id}": sequencing choice "${choice.id}" routes require a "to" target unless marked as end`
+            );
+          }
+          if (!module.items.includes(route.to)) {
+            throw new Error(
+              `Module "${module.id}": sequencing choice "${choice.id}" route target "${route.to}" is not in module items`
+            );
+          }
+        }
+
+        if (isEnd && route?.to !== undefined && typeof route.to !== 'string') {
+          throw new Error(
+            `Module "${module.id}": sequencing choice "${choice.id}" end routes must use string targets when provided`
+          );
+        }
+
+        const conditions = route?.conditions ?? (route?.condition ? [route.condition] : []);
+        for (const condition of conditions) {
+          validateBranchCondition(condition, module.id);
+        }
+      }
+
+      choiceMap.set(choice.id, choice);
+    }
+  }
+
+  if (branches !== undefined) {
+    if (!Array.isArray(branches)) {
+      throw new Error(`Module "${module.id}": sequencing.branches must be an array`);
+    }
+
+    const branchIds = new Set<string>();
+    for (const branch of branches) {
+      if (!branch || typeof branch !== 'object') {
+        throw new Error(`Module "${module.id}": each branch must be an object`);
+      }
+      if (typeof branch.id !== 'string' || !branch.id.trim()) {
+        throw new Error(`Module "${module.id}": sequencing.branches[].id must be a non-empty string`);
+      }
+      if (branchIds.has(branch.id)) {
+        throw new Error(`Module "${module.id}": duplicate branch id "${branch.id}"`);
+      }
+      branchIds.add(branch.id);
+
+      if (typeof branch.start !== 'string' || !branch.start.trim()) {
+        throw new Error(`Module "${module.id}": sequencing.branches[].start must be a non-empty string`);
+      }
+      if (!module.items.includes(branch.start)) {
+        throw new Error(
+          `Module "${module.id}": branch "${branch.id}" start item "${branch.start}" is not in module items`
+        );
+      }
+
+      if (branch.choices !== undefined) {
+        if (!Array.isArray(branch.choices) || branch.choices.length === 0) {
+          throw new Error(
+            `Module "${module.id}": branch "${branch.id}" choices must be a non-empty array when provided`
+          );
+        }
+
+        for (const choiceId of branch.choices) {
+          if (typeof choiceId !== 'string' || !choiceId.trim()) {
+            throw new Error(
+              `Module "${module.id}": branch "${branch.id}" choice references must be non-empty strings`
+            );
+          }
+          if (!choiceMap.has(choiceId)) {
+            throw new Error(
+              `Module "${module.id}": branch "${branch.id}" references unknown choice "${choiceId}"`
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Detect cycles in routing graph to prevent non-compliant navigation loops
+  const adjacency = new Map<string, string[]>();
+
+  for (const choice of choiceMap.values()) {
+    const fromNode = choice.from;
+    const neighbors = adjacency.get(fromNode) ?? [];
+
+    for (const route of choice.routes) {
+      if (!route.end && route.to) {
+        neighbors.push(route.to);
+      }
+    }
+
+    if (neighbors.length > 0) {
+      adjacency.set(fromNode, neighbors);
+    }
+  }
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const path: string[] = [];
+
+  const dfs = (node: string): boolean => {
+    if (visiting.has(node)) {
+      // Cycle found
+      path.push(node);
+      return true;
+    }
+    if (visited.has(node)) {
+      return false;
+    }
+
+    visiting.add(node);
+    path.push(node);
+
+    const neighbors = adjacency.get(node) ?? [];
+    for (const neighbor of neighbors) {
+      if (dfs(neighbor)) {
+        return true;
+      }
+    }
+
+    visiting.delete(node);
+    path.pop();
+    visited.add(node);
+    return false;
+  };
+
+  for (const node of adjacency.keys()) {
+    if (dfs(node)) {
+      const cycleStart = path[path.length - 1];
+      const cyclePath: string[] = [];
+      for (let i = path.length - 1; i >= 0; i--) {
+        cyclePath.unshift(path[i]);
+        if (path[i] === cycleStart && cyclePath.length > 1) {
+          break;
+        }
+      }
+      throw new Error(
+        `Module "${module.id}": branching routes create a cycle (${cyclePath.join(' -> ')})`
       );
     }
   }

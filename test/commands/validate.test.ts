@@ -381,7 +381,7 @@ module: m1
       stdio: 'pipe',
     });
 
-    // Create a quiz
+    // Create a valid quiz using the correct format
     const quizzesDir = path.join(projectPath, 'quizzes');
     fs.mkdirSync(quizzesDir, { recursive: true });
     
@@ -392,13 +392,16 @@ title: "Module 1 Quiz"
 module: m1
 questions:
   - id: q1
-    type: multiple-choice
-    text: "What is 2+2?"
+    type: single-choice
+    prompt: "What is 2+2?"
     options:
-      - "3"
-      - "4"
-      - "5"
-    correctAnswer: "4"
+      - id: a
+        text: "3"
+      - id: b
+        text: "4"
+      - id: c
+        text: "5"
+    correct: b
 `
     );
 
@@ -546,5 +549,439 @@ module: m2
       expect(output).toMatch(/E-(LESSON-PARSE-ERROR|SCO-UNKNOWN-MODULE)/);
       expect(output).toContain('m2');
     }
+  });
+
+  describe('Quiz Schema Validation', () => {
+    it('should fail validation when quiz has invalid correct option reference', () => {
+      const projectName = 'quiz-invalid-ref';
+      const projectPath = path.join(TEST_DIR, projectName);
+
+      // Initialize project
+      execSync(`${CLI_PATH} init ${projectName}`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+
+      // Create a quiz with invalid correct option
+      const quizzesDir = path.join(projectPath, 'quizzes');
+      fs.mkdirSync(quizzesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(quizzesDir, 'm1-quiz.yml'),
+        `id: m1-quiz
+title: "Module 1 Quiz"
+module: m1
+questions:
+  - id: q1
+    type: single-choice
+    prompt: "What is 2+2?"
+    options:
+      - id: a
+        text: "3"
+      - id: b
+        text: "4"
+    correct: z
+`
+      );
+
+      // Update course.yml
+      const courseConfig = {
+        id: projectName,
+        title: projectName,
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1',
+            items: ['m1-quiz'],
+          },
+        ],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, 'course.yml'),
+        yaml.stringify(courseConfig)
+      );
+
+      // Run validation (expect failure)
+      try {
+        execSync(`${CLI_PATH} validate`, {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.status).toBe(1);
+        const output = error.stdout.toString();
+        expect(output).toContain('E-QUIZ-INVALID_OPTION_REFERENCE');
+        expect(output).toContain('does not exist in options');
+      }
+    });
+
+    it('should fail validation when quiz has unknown question type', () => {
+      const projectName = 'quiz-unknown-type';
+      const projectPath = path.join(TEST_DIR, projectName);
+
+      // Initialize project
+      execSync(`${CLI_PATH} init ${projectName}`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+
+      // Create a quiz with unknown question type
+      const quizzesDir = path.join(projectPath, 'quizzes');
+      fs.mkdirSync(quizzesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(quizzesDir, 'm1-quiz.yml'),
+        `id: m1-quiz
+title: "Module 1 Quiz"
+module: m1
+questions:
+  - id: q1
+    type: unknown-type
+    prompt: "What is 2+2?"
+`
+      );
+
+      // Update course.yml
+      const courseConfig = {
+        id: projectName,
+        title: projectName,
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1',
+            items: ['m1-quiz'],
+          },
+        ],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, 'course.yml'),
+        yaml.stringify(courseConfig)
+      );
+
+      // Run validation (expect failure)
+      try {
+        execSync(`${CLI_PATH} validate`, {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.status).toBe(1);
+        const output = error.stdout.toString();
+        expect(output).toContain('E-QUIZ-UNKNOWN_QUESTION_TYPE');
+      }
+    });
+
+    it('should fail validation when fill-blank has missing blank definition', () => {
+      const projectName = 'quiz-missing-blank';
+      const projectPath = path.join(TEST_DIR, projectName);
+
+      // Initialize project
+      execSync(`${CLI_PATH} init ${projectName}`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+
+      // Create a quiz with fill-blank missing blank definition
+      const quizzesDir = path.join(projectPath, 'quizzes');
+      fs.mkdirSync(quizzesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(quizzesDir, 'm1-quiz.yml'),
+        `id: m1-quiz
+title: "Module 1 Quiz"
+module: m1
+questions:
+  - id: q1
+    type: fill-blank
+    prompt: "Fill in:"
+    text: "The answer is [[blank1]] and [[blank2]]."
+    blanks:
+      - id: blank1
+        correct_answers:
+          - answer
+`
+      );
+
+      // Update course.yml
+      const courseConfig = {
+        id: projectName,
+        title: projectName,
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1',
+            items: ['m1-quiz'],
+          },
+        ],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, 'course.yml'),
+        yaml.stringify(courseConfig)
+      );
+
+      // Run validation (expect failure)
+      try {
+        execSync(`${CLI_PATH} validate`, {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.status).toBe(1);
+        const output = error.stdout.toString();
+        expect(output).toContain('E-QUIZ-MISSING_BLANK_IN_TEXT');
+        expect(output).toContain('blank2');
+      }
+    });
+
+    it('should fail validation when matching has invalid premise reference', () => {
+      const projectName = 'quiz-matching-invalid';
+      const projectPath = path.join(TEST_DIR, projectName);
+
+      // Initialize project
+      execSync(`${CLI_PATH} init ${projectName}`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+
+      // Create a quiz with matching invalid premise reference
+      const quizzesDir = path.join(projectPath, 'quizzes');
+      fs.mkdirSync(quizzesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(quizzesDir, 'm1-quiz.yml'),
+        `id: m1-quiz
+title: "Module 1 Quiz"
+module: m1
+questions:
+  - id: q1
+    type: matching
+    prompt: "Match:"
+    premises:
+      - id: p1
+        text: "France"
+    responses:
+      - id: r1
+        text: "Paris"
+    correct_pairs:
+      - premise: p999
+        response: r1
+`
+      );
+
+      // Update course.yml
+      const courseConfig = {
+        id: projectName,
+        title: projectName,
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1',
+            items: ['m1-quiz'],
+          },
+        ],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, 'course.yml'),
+        yaml.stringify(courseConfig)
+      );
+
+      // Run validation (expect failure)
+      try {
+        execSync(`${CLI_PATH} validate`, {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.status).toBe(1);
+        const output = error.stdout.toString();
+        expect(output).toContain('E-QUIZ-INVALID_PREMISE_REFERENCE');
+        expect(output).toContain('p999');
+      }
+    });
+
+    it('should pass validation for a valid quiz with all question types', () => {
+      const projectName = 'quiz-valid-all-types';
+      const projectPath = path.join(TEST_DIR, projectName);
+
+      // Initialize project
+      execSync(`${CLI_PATH} init ${projectName}`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+
+      // Create a valid quiz with all question types
+      const quizzesDir = path.join(projectPath, 'quizzes');
+      fs.mkdirSync(quizzesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(quizzesDir, 'm1-quiz.yml'),
+        `id: m1-quiz
+title: "Module 1 Quiz"
+module: m1
+passing_score: 0.8
+questions:
+  - id: q1
+    type: single-choice
+    prompt: "What is 2+2?"
+    options:
+      - id: a
+        text: "3"
+      - id: b
+        text: "4"
+    correct: b
+
+  - id: q2
+    type: multiple-response
+    prompt: "Select prime numbers:"
+    options:
+      - id: a
+        text: "2"
+      - id: b
+        text: "3"
+      - id: c
+        text: "4"
+    correct:
+      - a
+      - b
+
+  - id: q3
+    type: true-false
+    prompt: "The sky is blue."
+    correct: true
+
+  - id: q4
+    type: fill-blank
+    prompt: "Fill in:"
+    text: "The capital of France is [[capital]]."
+    blanks:
+      - id: capital
+        correct_answers:
+          - Paris
+          - paris
+
+  - id: q5
+    type: matching
+    prompt: "Match:"
+    premises:
+      - id: p1
+        text: "France"
+    responses:
+      - id: r1
+        text: "Paris"
+    correct_pairs:
+      - premise: p1
+        response: r1
+`
+      );
+
+      // Update course.yml
+      const courseConfig = {
+        id: projectName,
+        title: projectName,
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1',
+            items: ['m1-quiz'],
+          },
+        ],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, 'course.yml'),
+        yaml.stringify(courseConfig)
+      );
+
+      // Run validation (should pass)
+      const output = execSync(`${CLI_PATH} validate`, {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      });
+
+      expect(output).toContain('Validation passed');
+    });
+
+    it('should output quiz validation errors in JSON format', () => {
+      const projectName = 'quiz-json-errors';
+      const projectPath = path.join(TEST_DIR, projectName);
+
+      // Initialize project
+      execSync(`${CLI_PATH} init ${projectName}`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+
+      // Create an invalid quiz
+      const quizzesDir = path.join(projectPath, 'quizzes');
+      fs.mkdirSync(quizzesDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(quizzesDir, 'm1-quiz.yml'),
+        `id: m1-quiz
+title: "Module 1 Quiz"
+module: m1
+questions:
+  - id: q1
+    type: single-choice
+    prompt: "What?"
+    options:
+      - id: a
+        text: "A"
+      - id: b
+        text: "B"
+    correct: invalid-option
+`
+      );
+
+      // Update course.yml
+      const courseConfig = {
+        id: projectName,
+        title: projectName,
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1',
+            items: ['m1-quiz'],
+          },
+        ],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, 'course.yml'),
+        yaml.stringify(courseConfig)
+      );
+
+      // Run validation with --json
+      try {
+        execSync(`${CLI_PATH} validate --json`, {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+        expect(true).toBe(false);
+      } catch (error: any) {
+        expect(error.status).toBe(1);
+        const output = error.stdout.toString();
+
+        // Parse JSON output
+        const result = JSON.parse(output);
+        expect(result.ok).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+
+        // Check error structure
+        const quizError = result.errors.find((e: any) =>
+          e.code.includes('INVALID_OPTION_REFERENCE')
+        );
+        expect(quizError).toBeDefined();
+        expect(quizError.message).toContain('invalid-option');
+        expect(quizError.file).toContain('m1-quiz.yml');
+      }
+    });
   });
 });

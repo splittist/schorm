@@ -8,6 +8,7 @@ import * as path from 'path';
 import { Course, loadCourse, findQuizzes, loadQuiz } from './course-model.js';
 import { findLessons, parseLesson } from './markdown.js';
 import type { MediaItem } from './course-model.js';
+import { validateQuizFile, type QuizValidationError } from './quiz-validator.js';
 
 export interface ValidationIssue {
   code: string;
@@ -17,6 +18,8 @@ export interface ValidationIssue {
   moduleId?: string;
   scoId?: string;
   itemId?: string;
+  questionId?: string;
+  questionType?: string;
   path?: string;
 }
 
@@ -118,31 +121,64 @@ async function discoverSCOs(
     }
   }
 
-  // Find and load quizzes
+  // Find and load quizzes with schema validation
   const quizzesDir = path.join(projectRoot, 'quizzes');
   if (fs.existsSync(quizzesDir)) {
     const quizFiles = findQuizzes(quizzesDir);
     for (const quizFile of quizFiles) {
+      const relativeQuizPath = path.relative(projectRoot, quizFile);
+      
+      // First, validate the quiz against the schema
+      const validationResult = validateQuizFile(quizFile);
+      
+      if (validationResult.status === 'error') {
+        // Convert quiz validation errors to validation issues
+        for (const quizError of validationResult.errors) {
+          errors.push(convertQuizErrorToValidationIssue(quizError, relativeQuizPath));
+        }
+        // Skip loading the quiz if validation failed
+        continue;
+      }
+
+      // Quiz passed validation, now load it
       try {
         const quiz = loadQuiz(quizFile);
         scos.push({
           id: quiz.id,
           module: quiz.module,
           type: 'quiz',
-          filePath: path.relative(projectRoot, quizFile),
+          filePath: relativeQuizPath,
         });
       } catch (error) {
         errors.push({
           code: 'E-QUIZ-PARSE-ERROR',
           message: `Failed to parse quiz: ${error instanceof Error ? error.message : String(error)}`,
           severity: 'error',
-          file: path.relative(projectRoot, quizFile),
+          file: relativeQuizPath,
         });
       }
     }
   }
 
   return scos;
+}
+
+/**
+ * Convert a QuizValidationError to a ValidationIssue
+ */
+function convertQuizErrorToValidationIssue(
+  quizError: QuizValidationError,
+  file: string
+): ValidationIssue {
+  return {
+    code: `E-QUIZ-${quizError.code}`,
+    message: quizError.message,
+    severity: 'error',
+    file,
+    questionId: quizError.questionId,
+    questionType: quizError.questionType,
+    path: quizError.path,
+  };
 }
 
 /**

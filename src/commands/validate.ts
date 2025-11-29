@@ -5,9 +5,16 @@ import type { ValidationIssue } from '../core/validator.js';
 export const validateCommand = new Command('validate')
   .description('Validate project structure and references')
   .option('--json', 'Output machine-readable JSON')
+  .option('--debug-validation', 'Output detailed validation information for debugging')
   .action(async (options) => {
     try {
       const projectRoot = process.cwd();
+      
+      if (options.debugValidation && !options.json) {
+        console.log('🔬 Debug validation mode enabled');
+        console.log(`   Project root: ${projectRoot}\n`);
+      }
+
       const result = await validateProject(projectRoot);
 
       if (options.json) {
@@ -20,14 +27,14 @@ export const validateCommand = new Command('validate')
         if (result.errors.length > 0) {
           console.log('❌ Errors found:\n');
           for (const issue of result.errors) {
-            printIssue(issue);
+            printIssue(issue, options.debugValidation);
           }
         }
 
         if (result.warnings.length > 0) {
           console.log('\n⚠️  Warnings:\n');
           for (const issue of result.warnings) {
-            printIssue(issue);
+            printIssue(issue, options.debugValidation);
           }
         }
 
@@ -54,7 +61,7 @@ export const validateCommand = new Command('validate')
 /**
  * Print a validation issue in human-readable format
  */
-function printIssue(issue: ValidationIssue): void {
+function printIssue(issue: ValidationIssue, debug: boolean = false): void {
   const prefix = issue.severity === 'error' ? '  ❌' : '  ⚠️ ';
   console.log(`${prefix} [${issue.code}] ${issue.message}`);
 
@@ -64,9 +71,16 @@ function printIssue(issue: ValidationIssue): void {
   if (issue.moduleId) details.push(`module: ${issue.moduleId}`);
   if (issue.scoId) details.push(`sco: ${issue.scoId}`);
   if (issue.itemId) details.push(`item: ${issue.itemId}`);
+  if (issue.questionId) details.push(`questionId: ${issue.questionId}`);
+  if (issue.questionType) details.push(`questionType: ${issue.questionType}`);
   if (issue.path) details.push(`path: ${issue.path}`);
 
   if (details.length > 0) {
     console.log(`     ${details.join(', ')}`);
+  }
+
+  // In debug mode, print full issue object
+  if (debug) {
+    console.log(`     [DEBUG] Full issue: ${JSON.stringify(issue)}`);
   }
 }

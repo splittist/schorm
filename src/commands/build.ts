@@ -7,6 +7,7 @@ import { parseLesson, findLessons } from '../core/markdown.js';
 import { TemplateEngine, loadTemplate } from '../core/templates.js';
 import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
+import { validateQuizFile } from '../core/quiz-validator.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
 import type { Lesson, Quiz } from '../core/course-model.js';
@@ -121,19 +122,40 @@ export const buildCommand = new Command('build')
 
       log(`   Total lessons: ${lessons.length}\n`);
 
-      // Step 4.5: Parse quizzes
-      log('📝 Parsing quizzes...');
+      // Step 4.5: Parse and validate quizzes
+      log('📝 Parsing and validating quizzes...');
       const quizzesDir = path.resolve('quizzes');
       const quizFiles = findQuizzes(quizzesDir);
       const quizzes: Quiz[] = [];
 
       for (const file of quizFiles) {
+        const relativePath = path.relative(process.cwd(), file);
+        
+        // First, validate the quiz against the schema
+        const validationResult = validateQuizFile(file);
+        
+        if (validationResult.status === 'error') {
+          // Add validation errors to the build errors
+          for (const quizError of validationResult.errors) {
+            errors.push({
+              code: `E-QUIZ-${quizError.code}`,
+              message: quizError.message,
+              severity: 'error',
+              file: relativePath,
+              scoId: quizError.questionId,
+              originatingStep: 'quiz-validation',
+            });
+          }
+          log(`   ✗ ${relativePath} (validation failed)`);
+          continue;
+        }
+
+        // Quiz passed validation, now load it
         try {
           const quiz = loadQuiz(file);
           quizzes.push(quiz);
           log(`   ✓ ${quiz.id}: ${quiz.title}`);
         } catch (error) {
-          const relativePath = path.relative(process.cwd(), file);
           errors.push(
             wrapError(error, 'E-QUIZ-PARSE', 'Failed to parse quiz', {
               file: relativePath,
@@ -144,6 +166,11 @@ export const buildCommand = new Command('build')
       }
 
       log(`   Total quizzes: ${quizzes.length}\n`);
+
+      // Check if there were quiz validation errors
+      if (errors.some(e => e.originatingStep === 'quiz-validation')) {
+        throw new Error('Quiz validation failed');
+      }
 
       // Step 5: Set up template engine
       log('🎨 Setting up templates...');

@@ -3,7 +3,7 @@
  */
 
 import { create } from 'xmlbuilder2';
-import type { Course, Lesson, Module } from './course-model.js';
+import type { BranchCondition, BranchRoute, Course, Lesson, Module } from './course-model.js';
 import type { MediaFile } from './media.js';
 import type { Quiz } from './quiz-model.js';
 
@@ -53,6 +53,7 @@ export interface ItemSequencing {
   };
   objectives?: SequencingObjective[];
   preconditions?: SequencingPrecondition[];
+  postconditions?: SequencingPostcondition[];
 }
 
 /**
@@ -87,6 +88,27 @@ export interface SequencingPrecondition {
     operator?: 'not' | 'noOp';
   }[];
   ruleAction: 'skip' | 'disabled' | 'hiddenFromChoice' | 'stopForwardTraversal';
+  conditionCombination?: 'all' | 'any';
+}
+
+export interface SequencingPostcondition {
+  ruleConditions: {
+    objectiveID?: string;
+    condition:
+      | 'satisfied'
+      | 'objectiveStatusKnown'
+      | 'objectiveMeasureKnown'
+      | 'completed'
+      | 'activityProgressKnown'
+      | 'attempted'
+      | 'attemptLimitExceeded'
+      | 'timeLimitExceeded'
+      | 'always';
+    operator?: 'not' | 'noOp';
+  }[];
+  ruleAction:
+    | { action: 'exitAll' | 'exitParent' | 'continue' | 'previous' | 'retry' | 'retryAll' }
+    | { action: 'jump'; target: string };
   conditionCombination?: 'all' | 'any';
 }
 
@@ -165,38 +187,77 @@ function addSequencingToElement(element: any, sequencing: ItemSequencing | Organ
     objsElement.up();
   }
 
-  // Add precondition rules if specified (only for ItemSequencing)
-  if (itemSeq.preconditions && itemSeq.preconditions.length > 0) {
+  const hasPreconditions = itemSeq.preconditions && itemSeq.preconditions.length > 0;
+  const hasPostconditions = itemSeq.postconditions && itemSeq.postconditions.length > 0;
+
+  // Add sequencing rules (pre/post conditions)
+  if (hasPreconditions || hasPostconditions) {
     const rulesElement = seqElement.ele('imsss:sequencingRules');
-    
-    for (const precond of itemSeq.preconditions) {
-      const preCondRuleElement = rulesElement.ele('imsss:preConditionRule');
-      
-      const conditionsAttrs: Record<string, string> = {};
-      if (precond.conditionCombination) {
-        conditionsAttrs.conditionCombination = precond.conditionCombination;
-      }
-      const ruleConditionsElement = preCondRuleElement.ele('imsss:ruleConditions', conditionsAttrs);
-      
-      for (const cond of precond.ruleConditions) {
-        const condAttrs: Record<string, string> = {
-          condition: cond.condition,
-        };
-        if (cond.objectiveID) {
-          condAttrs.referencedObjective = cond.objectiveID;
+
+    if (hasPreconditions) {
+      for (const precond of itemSeq.preconditions!) {
+        const preCondRuleElement = rulesElement.ele('imsss:preConditionRule');
+
+        const conditionsAttrs: Record<string, string> = {};
+        if (precond.conditionCombination) {
+          conditionsAttrs.conditionCombination = precond.conditionCombination;
         }
-        if (cond.operator) {
-          condAttrs.operator = cond.operator;
+        const ruleConditionsElement = preCondRuleElement.ele('imsss:ruleConditions', conditionsAttrs);
+
+        for (const cond of precond.ruleConditions) {
+          const condAttrs: Record<string, string> = {
+            condition: cond.condition,
+          };
+          if (cond.objectiveID) {
+            condAttrs.referencedObjective = cond.objectiveID;
+          }
+          if (cond.operator) {
+            condAttrs.operator = cond.operator;
+          }
+          ruleConditionsElement.ele('imsss:ruleCondition', condAttrs).up();
         }
-        ruleConditionsElement.ele('imsss:ruleCondition', condAttrs).up();
+
+        ruleConditionsElement.up();
+
+        preCondRuleElement.ele('imsss:ruleAction', { action: precond.ruleAction }).up();
+        preCondRuleElement.up();
       }
-      
-      ruleConditionsElement.up();
-      
-      preCondRuleElement.ele('imsss:ruleAction', { action: precond.ruleAction }).up();
-      preCondRuleElement.up();
     }
-    
+
+    if (hasPostconditions) {
+      for (const postcond of itemSeq.postconditions!) {
+        const postCondRuleElement = rulesElement.ele('imsss:postConditionRule');
+
+        const conditionsAttrs: Record<string, string> = {};
+        if (postcond.conditionCombination) {
+          conditionsAttrs.conditionCombination = postcond.conditionCombination;
+        }
+        const ruleConditionsElement = postCondRuleElement.ele('imsss:ruleConditions', conditionsAttrs);
+
+        for (const cond of postcond.ruleConditions) {
+          const condAttrs: Record<string, string> = {
+            condition: cond.condition,
+          };
+          if (cond.objectiveID) {
+            condAttrs.referencedObjective = cond.objectiveID;
+          }
+          if (cond.operator) {
+            condAttrs.operator = cond.operator;
+          }
+          ruleConditionsElement.ele('imsss:ruleCondition', condAttrs).up();
+        }
+
+        ruleConditionsElement.up();
+
+        const actionAttrs: Record<string, string> = { action: postcond.ruleAction.action };
+        if (postcond.ruleAction.action === 'jump') {
+          actionAttrs.target = postcond.ruleAction.target;
+        }
+        postCondRuleElement.ele('imsss:ruleAction', actionAttrs).up();
+        postCondRuleElement.up();
+      }
+    }
+
     rulesElement.up();
   }
 
@@ -311,6 +372,103 @@ function buildItemSequencing(
 
   const itemSeq: ItemSequencing = {};
 
+  const ensureObjective = (localObjectiveId: string, globalObjectiveId: string): void => {
+    itemSeq.objectives = itemSeq.objectives ?? [];
+    if (!itemSeq.objectives.some((o) => o.objectiveID === localObjectiveId)) {
+      itemSeq.objectives.push({
+        objectiveID: localObjectiveId,
+        isPrimary: false,
+        mapInfo: [
+          {
+            targetObjectiveID: globalObjectiveId,
+            readSatisfiedStatus: true,
+            writeSatisfiedStatus: false,
+            readNormalizedMeasure: true,
+            writeNormalizedMeasure: false,
+          },
+        ],
+      });
+    }
+  };
+
+  const addBranchingRules = (): void => {
+    if (!sequencing.choices || sequencing.choices.length === 0) {
+      return;
+    }
+
+    const relevantChoices = sequencing.choices.filter((choice) => choice.from === itemId);
+    if (relevantChoices.length === 0) {
+      return;
+    }
+
+    itemSeq.controlMode = itemSeq.controlMode ?? {};
+    if (itemSeq.controlMode.choice === undefined) {
+      itemSeq.controlMode.choice = true;
+    }
+    if (itemSeq.controlMode.flow === undefined) {
+      itemSeq.controlMode.flow = true;
+    }
+
+    const sanitize = (value: string): string => value.replace(/[^a-zA-Z0-9_-]+/g, '-');
+
+    const routeConditionsToRules = (route: BranchRoute): SequencingPostcondition['ruleConditions'] => {
+      const conditions: BranchCondition[] = route.conditions ?? [];
+      if (route.condition) {
+        conditions.push(route.condition);
+      }
+
+      if (conditions.length === 0) {
+        return [
+          {
+            condition: 'always',
+          },
+        ];
+      }
+
+      return conditions.map((cond) => {
+        const comparator = cond.equals
+          ? `eq-${cond.equals}`
+          : cond.notEquals
+            ? `neq-${cond.notEquals}`
+            : cond.in
+              ? `in-${(cond.in as unknown[]).map(String).join('-')}`
+              : cond.notIn
+                ? `nin-${(cond.notIn as unknown[]).map(String).join('-')}`
+                : 'condition';
+        const localObjectiveId = `local-${itemId}-${sanitize(cond.variable)}-${sanitize(comparator)}`;
+        const globalObjectiveId = `branch-${module.id}-${sanitize(cond.variable)}-${sanitize(comparator)}`;
+
+        ensureObjective(localObjectiveId, globalObjectiveId);
+
+        return {
+          objectiveID: localObjectiveId,
+          condition: 'satisfied',
+        } as const;
+      });
+    };
+
+    const postconditions: SequencingPostcondition[] = itemSeq.postconditions ?? [];
+
+    for (const choice of relevantChoices) {
+      for (const route of choice.routes) {
+        const ruleConditions = routeConditionsToRules(route as never);
+        const rule: SequencingPostcondition = {
+          ruleConditions,
+          conditionCombination: ruleConditions.length > 1 ? 'all' : undefined,
+          ruleAction: route.end
+            ? { action: 'exitAll' }
+            : { action: 'jump', target: route.to ? `ITEM-${route.to}` : '' },
+        };
+
+        postconditions.push(rule);
+      }
+    }
+
+    if (postconditions.length > 0) {
+      itemSeq.postconditions = postconditions;
+    }
+  };
+
   // For linear mode, items can flow but not go backward
   if (sequencing.mode === 'linear') {
     itemSeq.controlMode = {
@@ -386,8 +544,11 @@ function buildItemSequencing(
     }
   }
 
+  // Apply branching rules for conditional routes
+  addBranchingRules();
+
   // Only return if there's actual sequencing config
-  if (itemSeq.controlMode || itemSeq.objectives || itemSeq.preconditions) {
+  if (itemSeq.controlMode || itemSeq.objectives || itemSeq.preconditions || itemSeq.postconditions) {
     return itemSeq;
   }
 
@@ -412,6 +573,16 @@ function buildModuleSequencing(module: Module): OrganizationSequencing | undefin
       choice: true,
       forwardOnly: true,
     };
+  }
+
+  if ((sequencing.branches && sequencing.branches.length > 0) || (sequencing.choices && sequencing.choices.length > 0)) {
+    orgSeq.controlMode = orgSeq.controlMode ?? {};
+    if (orgSeq.controlMode.flow === undefined) {
+      orgSeq.controlMode.flow = true;
+    }
+    if (orgSeq.controlMode.choice === undefined) {
+      orgSeq.controlMode.choice = true;
+    }
   }
 
   if (orgSeq.controlMode) {

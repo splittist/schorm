@@ -18,10 +18,38 @@ export interface Course {
   metadata?: CourseMetadata;
 }
 
+/**
+ * Module sequencing configuration
+ * Supports linear progression and optional quiz-gated progression
+ */
+export interface ModuleSequencing {
+  /**
+   * Sequencing mode for the module
+   * - 'linear': Items must be completed in order
+   * - 'free': Items can be accessed in any order (default)
+   */
+  mode?: 'linear' | 'free';
+
+  /**
+   * Quiz gate configuration - require passing a quiz before accessing later items
+   * Only applies when mode is 'linear' or 'gated'
+   */
+  gate?: {
+    /**
+     * The quiz ID that must be passed to unlock subsequent items
+     */
+    quiz: string;
+  };
+}
+
 export interface Module {
   id: string;
   title: string;
   items: string[];
+  /**
+   * Optional sequencing configuration for this module
+   */
+  sequencing?: ModuleSequencing;
 }
 
 export interface MediaItem {
@@ -87,7 +115,54 @@ export function loadCourse(coursePath: string): Course {
     course.modules = [];
   }
 
+  // Validate sequencing configuration for each module
+  for (const module of course.modules) {
+    validateModuleSequencing(module);
+  }
+
   return course;
+}
+
+/**
+ * Validate module sequencing configuration
+ * Throws an error if the configuration is invalid
+ */
+export function validateModuleSequencing(module: Module): void {
+  const sequencing = module.sequencing;
+  if (!sequencing) {
+    return; // No sequencing config is valid (defaults to free navigation)
+  }
+
+  // Validate mode
+  if (sequencing.mode !== undefined) {
+    if (sequencing.mode !== 'linear' && sequencing.mode !== 'free') {
+      throw new Error(
+        `Module "${module.id}": sequencing.mode must be "linear" or "free", got "${sequencing.mode}"`
+      );
+    }
+  }
+
+  // Validate gate configuration
+  if (sequencing.gate) {
+    if (typeof sequencing.gate !== 'object') {
+      throw new Error(`Module "${module.id}": sequencing.gate must be an object`);
+    }
+
+    if (!sequencing.gate.quiz) {
+      throw new Error(`Module "${module.id}": sequencing.gate.quiz is required when gate is specified`);
+    }
+
+    if (typeof sequencing.gate.quiz !== 'string') {
+      throw new Error(`Module "${module.id}": sequencing.gate.quiz must be a string`);
+    }
+
+    // Validate that the gate quiz exists in the module's items
+    if (!module.items.includes(sequencing.gate.quiz)) {
+      throw new Error(
+        `Module "${module.id}": sequencing.gate.quiz "${sequencing.gate.quiz}" is not in the module's items`
+      );
+    }
+  }
 }
 
 /**

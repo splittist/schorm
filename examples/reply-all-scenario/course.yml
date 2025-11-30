@@ -1,0 +1,13 @@
+id: reply-all-crisis
+version: 1.0.0
+title: The Reply-All Apocalypse
+description: A scenario-based course demonstrating crisis management through email mistakes
+
+modules:
+  - id: email-scenario
+    title: "Email Crisis Management"
+    items: []  # Auto-populated from scenario graph
+    sequencing:
+      mode: scenario
+      scenario:
+        start: the-incident.md

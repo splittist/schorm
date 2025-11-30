@@ -8,6 +8,7 @@ import { TemplateEngine, loadTemplate } from '../core/templates.js';
 import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
 import { validateQuizFile } from '../core/quiz-validator.js';
+import { buildScenarioGraph, generateSequencingFromGraph, processScenarioLinks } from '../core/scenario-builder.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
 import type { Lesson, Quiz } from '../core/course-model.js';
@@ -91,6 +92,65 @@ export const buildCommand = new Command('build')
           })
         );
         throw new Error('Build directory setup failed');
+      }
+
+      // Step 3.5: Process scenario modules
+      // Detect and build scenario graphs before parsing standard lessons
+      const scenarioLessons: Lesson[] = [];
+      const scenarioModules = course.modules.filter(m => m.sequencing?.mode === 'scenario');
+      
+      if (scenarioModules.length > 0) {
+        log('🎬 Processing scenario modules...');
+        
+        for (const module of scenarioModules) {
+          try {
+            const scenarioConfig = module.sequencing!.scenario!;
+            const contentDir = path.resolve(scenarioConfig.contentDir || 'content');
+            
+            log(`   📖 Building scenario graph for module "${module.id}"...`);
+            const graph = await buildScenarioGraph(contentDir, scenarioConfig.start);
+            
+            log(`      Found ${graph.nodes.size} scenes (${graph.endings.size} endings)`);
+            
+            // Generate sequencing data (will be used in manifest generation)
+            const sequencingData = generateSequencingFromGraph(graph, module.id);
+            
+            // Store sequencing data on module for manifest generation
+            // We'll use a temporary property that won't conflict with the schema
+            (module as any)._generatedSequencing = sequencingData;
+            
+            // Parse each scene as a lesson
+            for (const [nodeId, node] of graph.nodes) {
+              const filePath = path.join(contentDir, node.file);
+              const lesson = parseLesson(filePath, course);
+              
+              // Process choice links to buttons
+              lesson.content = processScenarioLinks(lesson.content, node.choices);
+              
+              // Add scenario metadata
+              (lesson as any).isScenario = true;
+              (lesson as any).isEnding = node.isEnding;
+              (lesson as any).masteryScore = node.masteryScore;
+              (lesson as any).sceneChoices = node.choices;
+              
+              scenarioLessons.push(lesson);
+              log(`      ✓ ${lesson.id}: ${lesson.title}${node.isEnding ? ' (ending)' : ''}`);
+            }
+            
+            // Update module items to reflect the auto-generated scenes
+            module.items = Array.from(graph.nodes.keys());
+            
+          } catch (error) {
+            errors.push(
+              wrapError(error, 'E-SCENARIO-BUILD', 'Failed to build scenario graph', {
+                moduleId: module.id,
+                originatingStep: 'scenario',
+              })
+            );
+          }
+        }
+        
+        log();
       }
 
       // Step 4: Parse lessons
@@ -220,8 +280,55 @@ export const buildCommand = new Command('build')
         }
       }
 
+      let scenarioTemplate;
+      try {
+        scenarioTemplate = loadTemplate(path.join(layoutsDir, 'scenario.html'));
+      } catch (error) {
+        // Scenario template is optional - only throw if there are scenario lessons
+        if (scenarioLessons.length > 0) {
+          errors.push(
+            wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load scenario template', {
+              file: path.join(layoutsDir, 'scenario.html'),
+              originatingStep: 'template',
+            })
+          );
+          throw new Error('Scenario template load failed but scenario modules exist');
+        }
+      }
+
       // Step 6: Render lessons to HTML
       log('🖼️  Rendering lessons...');
+      
+      // Render scenario lessons first
+      for (const lesson of scenarioLessons) {
+        try {
+          const html = templateEngine.render(scenarioTemplate!, {
+            courseTitle: course.title,
+            lesson: {
+              id: lesson.id,
+              title: lesson.title,
+              content: lesson.content,
+              metadata: lesson.metadata,
+              isEnding: (lesson as any).isEnding,
+              masteryScore: (lesson as any).masteryScore,
+            },
+          });
+
+          const outputPath = path.join(outputDir, `${lesson.id}.html`);
+          fs.writeFileSync(outputPath, html, 'utf-8');
+          log(`   ✓ ${lesson.id}.html (scenario)`);
+        } catch (error) {
+          errors.push(
+            wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render scenario template', {
+              scoId: lesson.id,
+              moduleId: lesson.module,
+              originatingStep: 'template',
+            })
+          );
+        }
+      }
+      
+      // Render regular lessons
       for (const lesson of lessons) {
         try {
           let html = templateEngine.render(lessonTemplate, {
@@ -378,7 +485,9 @@ export const buildCommand = new Command('build')
       // Step 9: Generate manifest
       log('📜 Generating SCORM manifest...');
       try {
-        const manifest = buildManifestFromCourse(course, lessons, mediaFiles, quizzes);
+        // Combine scenario lessons with regular lessons for manifest
+        const allLessons = [...scenarioLessons, ...lessons];
+        const manifest = buildManifestFromCourse(course, allLessons, mediaFiles, quizzes);
         const manifestPath = path.join(outputDir, 'imsmanifest.xml');
         fs.writeFileSync(manifestPath, manifest, 'utf-8');
         log(`   ✓ imsmanifest.xml\n`);

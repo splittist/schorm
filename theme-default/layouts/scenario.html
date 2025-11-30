@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{lesson.title}} - {{courseTitle}}</title>
+    <link rel="stylesheet" href="assets/styles.css">
+    <style>
+        .scenario-scene {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        
+        .scenario-content {
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .scenario-choices {
+            margin-top: 2rem;
+        }
+        
+        .scenario-choice {
+            display: block;
+            width: 100%;
+            padding: 1rem 1.5rem;
+            margin: 0.75rem 0;
+            font-size: 1.1rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s;
+        }
+        
+        .scenario-choice:hover {
+            background: #0056b3;
+        }
+        
+        .scenario-choice:active {
+            transform: translateY(2px);
+        }
+        
+        .scenario-ending {
+            border-left: 4px solid #28a745;
+            padding-left: 2rem;
+        }
+        
+        .scenario-ending.low-mastery {
+            border-left-color: #dc3545;
+        }
+        
+        .scenario-ending.medium-mastery {
+            border-left-color: #ffc107;
+        }
+        
+        .ending-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .ending-badge.high {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .ending-badge.medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .ending-badge.low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body class="scenario-scene{{#if lesson.isEnding}} scenario-ending{{#if lesson.masteryScore}}{{#if (gt lesson.masteryScore 0.7)}}{{else}}{{#if (gt lesson.masteryScore 0.4)}} medium-mastery{{else}} low-mastery{{/if}}{{/if}}{{/if}}{{/if}}">
+    {{> header}}
+    
+    <main class="scenario-content">
+        {{#if lesson.isEnding}}
+        {{#if lesson.masteryScore}}
+        <div class="ending-badge {{#if (gt lesson.masteryScore 0.7)}}high{{else}}{{#if (gt lesson.masteryScore 0.4)}}medium{{else}}low{{/if}}{{/if}}">
+            {{#if (gt lesson.masteryScore 0.7)}}
+            ✓ Best Outcome
+            {{else}}
+            {{#if (gt lesson.masteryScore 0.4)}}
+            ⚠ Mediocre Outcome
+            {{else}}
+            ✗ Poor Outcome
+            {{/if}}
+            {{/if}}
+        </div>
+        {{/if}}
+        {{/if}}
+        
+        <article>
+            <header>
+                <h1>{{lesson.title}}</h1>
+            </header>
+            
+            <div class="lesson-body">
+                {{{lesson.content}}}
+            </div>
+        </article>
+    </main>
+    
+    {{> footer}}
+    
+    <script src="assets/schorm-runtime.js"></script>
+    <script>
+        // Initialize SCORM
+        initializeSco();
+        
+        const currentScene = '{{lesson.id}}';
+        const isEnding = {{#if lesson.isEnding}}true{{else}}false{{/if}};
+        const masteryScore = {{#if lesson.masteryScore}}{{lesson.masteryScore}}{{else}}null{{/if}};
+        
+        // Save current location
+        setValue('cmi.location', currentScene);
+        
+        {{#unless lesson.isEnding}}
+        // Handle choice buttons (non-ending scenes)
+        document.querySelectorAll('.scenario-choice').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const target = this.getAttribute('data-target');
+                
+                if (!target) {
+                    console.error('Choice button missing data-target attribute');
+                    return;
+                }
+                
+                // Extract target ID (remove .md extension if present)
+                const targetId = target.replace(/\.md$/, '');
+                
+                // Set objective indicating this choice was made
+                // This enables the target scene via SCORM sequencing preconditions
+                const choiceKey = currentScene + '_to_' + target;
+                const objectiveId = 'obj_{{lesson.module}}_' + choiceKey.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                setValue('cmi.objectives.' + objectiveId + '.success_status', 'passed');
+                
+                // Save choice in suspend data for debugging/tracking
+                try {
+                    const suspendData = JSON.parse(getValue('cmi.suspend_data') || '{}');
+                    suspendData[currentScene] = target;
+                    setValue('cmi.suspend_data', JSON.stringify(suspendData));
+                } catch (e) {
+                    console.warn('Failed to save choice to suspend_data', e);
+                }
+                
+                // Let SCORM handle navigation - exit and let LMS reload
+                setValue('cmi.exit', 'suspend');
+                completeSco();
+                
+                // Fallback: navigate directly if LMS doesn't handle it
+                setTimeout(function() {
+                    window.location.href = targetId + '.html';
+                }, 500);
+            });
+        });
+        {{else}}
+        // Ending scene - set final status
+        if (masteryScore !== null) {
+            setValue('cmi.score.scaled', masteryScore.toString());
+            setValue('cmi.score.min', '0');
+            setValue('cmi.score.max', '1');
+            setValue('cmi.score.raw', (masteryScore * 100).toString());
+            
+            // Determine success based on mastery threshold
+            const passThreshold = 0.6;
+            setValue('cmi.success_status', masteryScore >= passThreshold ? 'passed' : 'failed');
+        }
+        
+        setValue('cmi.completion_status', 'completed');
+        
+        // Auto-complete after brief delay or on any click
+        setTimeout(function() {
+            completeSco();
+        }, 3000);
+        
+        document.addEventListener('click', function() {
+            completeSco();
+        });
+        {{/unless}}
+    </script>
+</body>
+</html>

@@ -2,9 +2,78 @@
 
 The sequencing DSL in `course.yml` focuses on a small set of predictable behaviors so authors do not need to know any external standards. Use these copy-pasteable patterns to express navigation rules the manifest generator understands today.
 
+## Recommended: Scenario mode (auto-generated branching)
+
+**New in v0.2:** The simplest way to create branching "choose your own adventure" courses is **scenario mode**. Instead of manually defining sequencing rules, you write markdown files with choices as regular links and Schorm auto-generates the SCORM sequencing.
+
+```yaml
+modules:
+  - id: crisis-response
+    title: "Email Crisis Management"
+    items: []  # Auto-populated from markdown graph
+    sequencing:
+      mode: scenario
+      scenario:
+        start: the-incident.md  # Entry point
+```
+
+Then in your markdown files:
+
+```markdown
+---
+id: the-incident
+title: The Incident
+module: crisis-response
+---
+
+You just sent an angry email to the client by mistake!
+
+## What do you do?
+
+- [Try to recall the message](recall-attempt.md)
+- [Own the mistake immediately](owning-it.md)
+```
+
+Ending scenes use frontmatter flags:
+
+```markdown
+---
+id: ending-success
+title: Professional Response
+module: crisis-response
+ending: true
+mastery: 1.0  # SCORM score (0.0-1.0)
+---
+
+You handled the crisis professionally. Well done!
+```
+
+**What happens automatically:**
+- Schorm crawls all markdown files starting from `start`
+- Extracts choice links `[Label](target.md)` as navigation options
+- Generates SCORM objectives for each choice
+- Creates precondition rules to lock scenes until choices are made
+- Converts links to interactive buttons in the output
+- Sets mastery scores from ending scenes
+
+**Benefits:**
+- ✅ No SCORM knowledge required - just write markdown
+- ✅ Works in any markdown editor
+- ✅ Standard `[link](target)` syntax
+- ✅ Graph auto-discovered by crawling
+- ✅ Ending-based scoring (simple, clear)
+
+See `examples/reply-all-scenario/` for a complete working example.
+
+---
+
+## Advanced: Manual sequencing (for complex cases)
+
+If you need features not supported by scenario mode (like external variables, LMS profile data, or complex conditional logic), use the manual sequencing DSL below.
+
 ## DSL knobs recap
 
-- `mode`: `linear` forces chronological navigation; `free` leaves sequencing off. Omit the block entirely for default free navigation.
+- `mode`: `linear` forces chronological navigation; `free` leaves sequencing off; `scenario` auto-generates from markdown. Omit the block entirely for default free navigation.
 - `gate.quiz`: writes and checks a shared completion flag so later items are disabled until the quiz is passed.
 - `branches`: named entry points into the routing graph (handy for documentation and for scoping which choices apply to a flow).
 - `choices`: rules evaluated at an item that jump to another item or end the attempt. Optional route conditions read course variables and only fire when the variable check is satisfied.

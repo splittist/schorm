@@ -558,7 +558,14 @@ function buildItemSequencing(
 /**
  * Build organization-level sequencing for a module
  */
-function buildModuleSequencing(module: Module): OrganizationSequencing | undefined {
+function buildModuleSequencing(module: Module, generatedSequencing?: any): OrganizationSequencing | undefined {
+  // If scenario module with generated sequencing, use that control mode
+  if (generatedSequencing?.controlMode) {
+    return {
+      controlMode: generatedSequencing.controlMode
+    };
+  }
+  
   const sequencing = module.sequencing;
   if (!sequencing) {
     return undefined;
@@ -572,6 +579,15 @@ function buildModuleSequencing(module: Module): OrganizationSequencing | undefin
       flow: true,
       choice: true,
       forwardOnly: true,
+    };
+  }
+
+  // For scenario mode
+  if (sequencing.mode === 'scenario') {
+    orgSeq.controlMode = {
+      flow: false,
+      choice: true,
+      forwardOnly: false,
     };
   }
 
@@ -608,31 +624,52 @@ export function buildManifestFromCourse(
   for (const module of course.modules) {
     const moduleItems: OrganizationItem[] = [];
 
-    for (let i = 0; i < module.items.length; i++) {
-      const itemId = module.items[i];
-      const lesson = lessonMap.get(itemId);
-      const quiz = quizMap.get(itemId);
-      
-      if (lesson) {
-        const itemSequencing = buildItemSequencing(module, itemId, i, false);
-        moduleItems.push({
-          identifier: `ITEM-${itemId}`,
-          title: lesson.title,
-          identifierref: `RES-${itemId}`,
-          sequencing: itemSequencing,
-        });
-      } else if (quiz) {
-        const itemSequencing = buildItemSequencing(module, itemId, i, true);
-        moduleItems.push({
-          identifier: `ITEM-${itemId}`,
-          title: quiz.title,
-          identifierref: `RES-${itemId}`,
-          sequencing: itemSequencing,
-        });
+    // Check if this is a scenario module with generated sequencing
+    const generatedSequencing = (module as any)._generatedSequencing;
+    
+    if (generatedSequencing) {
+      // Use pre-generated items with sequencing from scenario builder
+      for (const genItem of generatedSequencing.items) {
+        const lesson = lessonMap.get(genItem.identifier);
+        const quiz = quizMap.get(genItem.identifier);
+        
+        if (lesson || quiz) {
+          moduleItems.push({
+            identifier: `ITEM-${genItem.identifier}`,
+            title: genItem.title,
+            identifierref: `RES-${genItem.identifier}`,
+            sequencing: genItem.sequencing,
+          });
+        }
+      }
+    } else {
+      // Regular module - build items normally
+      for (let i = 0; i < module.items.length; i++) {
+        const itemId = module.items[i];
+        const lesson = lessonMap.get(itemId);
+        const quiz = quizMap.get(itemId);
+        
+        if (lesson) {
+          const itemSequencing = buildItemSequencing(module, itemId, i, false);
+          moduleItems.push({
+            identifier: `ITEM-${itemId}`,
+            title: lesson.title,
+            identifierref: `RES-${itemId}`,
+            sequencing: itemSequencing,
+          });
+        } else if (quiz) {
+          const itemSequencing = buildItemSequencing(module, itemId, i, true);
+          moduleItems.push({
+            identifier: `ITEM-${itemId}`,
+            title: quiz.title,
+            identifierref: `RES-${itemId}`,
+            sequencing: itemSequencing,
+          });
+        }
       }
     }
 
-    const moduleSequencing = buildModuleSequencing(module);
+    const moduleSequencing = buildModuleSequencing(module, generatedSequencing);
     orgItems.push({
       identifier: `ITEM-${module.id}`,
       title: module.title,

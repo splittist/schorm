@@ -24,6 +24,14 @@ export class TemplateEngine {
       return a === b;
     });
 
+    // Register 'gt' helper for greater than comparison
+    this.handlebars.registerHelper('gt', (a: unknown, b: unknown) => {
+      if (typeof a === 'number' && typeof b === 'number') {
+        return a > b;
+      }
+      return false;
+    });
+
     // Register 'contains' helper to check if array contains value
     this.handlebars.registerHelper('contains', (array: unknown, value: unknown) => {
       if (!Array.isArray(array)) {

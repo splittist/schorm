@@ -27,8 +27,9 @@ export interface ModuleSequencing {
    * Sequencing mode for the module
    * - 'linear': Items must be completed in order
    * - 'free': Items can be accessed in any order (default)
+   * - 'scenario': Auto-generated branching from markdown content graph
    */
-  mode?: 'linear' | 'free';
+  mode?: 'linear' | 'free' | 'scenario';
 
   /**
    * Quiz gate configuration - require passing a quiz before accessing later items
@@ -52,6 +53,21 @@ export interface ModuleSequencing {
    * Choice sets that route learners to other items or to an end state
    */
   choices?: BranchChoice[];
+
+  /**
+   * Scenario configuration for auto-generated branching
+   * Only used when mode is 'scenario'
+   */
+  scenario?: {
+    /**
+     * Starting markdown file (e.g., 'the-incident.md')
+     */
+    start: string;
+    /**
+     * Optional content directory override (defaults to 'content/')
+     */
+    contentDir?: string;
+  };
 }
 
 type BranchScalar = string | number | boolean;
@@ -206,11 +222,37 @@ export function validateModuleSequencing(module: Module): void {
 
   // Validate mode
   if (sequencing.mode !== undefined) {
-    if (sequencing.mode !== 'linear' && sequencing.mode !== 'free') {
+    if (sequencing.mode !== 'linear' && sequencing.mode !== 'free' && sequencing.mode !== 'scenario') {
       throw new Error(
-        `Module "${module.id}": sequencing.mode must be "linear" or "free", got "${sequencing.mode}"`
+        `Module "${module.id}": sequencing.mode must be "linear", "free", or "scenario", got "${sequencing.mode}"`
       );
     }
+  }
+
+  // Validate scenario mode configuration
+  if (sequencing.mode === 'scenario') {
+    if (!sequencing.scenario?.start) {
+      throw new Error(
+        `Module "${module.id}": scenario mode requires sequencing.scenario.start to be specified`
+      );
+    }
+    if (typeof sequencing.scenario.start !== 'string' || !sequencing.scenario.start.trim()) {
+      throw new Error(
+        `Module "${module.id}": sequencing.scenario.start must be a non-empty string`
+      );
+    }
+    if (module.items.length > 0) {
+      console.warn(
+        `Module "${module.id}": items[] will be ignored in scenario mode (auto-generated from markdown graph)`
+      );
+    }
+    // In scenario mode, branches and choices are auto-generated
+    if (sequencing.branches || sequencing.choices) {
+      console.warn(
+        `Module "${module.id}": branches and choices will be ignored in scenario mode (auto-generated from markdown)`
+      );
+    }
+    return; // Skip further validation for scenario mode
   }
 
   // Validate gate configuration

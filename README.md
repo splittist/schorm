@@ -98,13 +98,13 @@ build/                 # generated output (not committed)
 ```
 
 The output of schorm build includes:
-	•	HTML lessons/quizzes
-	•	media files
-	•	SCORM runtime JS
-	•	generated imsmanifest.xml
-	•	assets from the theme
+- HTML lessons/quizzes
+- media files
+- runtime JS
+- generated manifest
+- assets from the theme
 
-All of this is zipped by schorm package into a SCORM-compliant bundle.
+All of this is zipped by schorm package into a standards-compliant bundle.
 
 ### Module sequencing and branching schema
 
@@ -155,18 +155,18 @@ Validation protects against invalid references, cycles, and missing targets:
 - A `branch.start`, `choice.from`, or `route.to` must refer to an item in `items`
 - `branches.choices` must point to defined choice IDs
 - Routes must either declare `end: true` or a `to` target
-- Conditional routes may not form cycles (e.g., `a -> b -> a`), keeping graphs SCORM-friendly
+- Conditional routes may not form cycles (e.g., `a -> b -> a`), keeping graphs straightforward
 
-### Sequencing DSL → SCORM behaviors
+### Sequencing DSL behaviors
 
-`schorm` converts the YAML sequencing DSL into a narrow, predictable set of SCORM 2004 sequencing constructs so authors and LLMs can script flows safely:
+`schorm` converts the YAML sequencing DSL into a narrow, predictable set of navigation rules so authors and LLMs can script flows safely:
 
-- `mode: linear` → SCORM `controlMode.forwardOnly=true` on modules and items to keep navigation chronological while still honoring LMS next/back controls.
-- `gate.quiz: <id>` → the quiz writes a global objective when passed; subsequent items map to that objective and get a precondition rule that disables launch until it is satisfied. Expect LMS UIs to gray out or block those items until the quiz is passed.
-- `choices` and `branches` → each `choice.from` item gets `postcondition` rules that `jump` to the chosen target or `exitAll` when `end: true`. Route conditions are encoded as objective checks so only one matching route will execute.
-- Only simple control mode flags, preconditions (`disabled`), postconditions (`jump`/`exitAll`), and objective mappings are emitted; full SCORM rollup rules and complex condition combinations are intentionally out of scope.
+- `mode: linear` keeps navigation chronological while still honoring LMS next/back controls.
+- `gate.quiz: <id>` writes a shared completion flag when passed; items that follow the gate are disabled until that flag is set, so expect LMS UIs to gray out or block those items until the quiz is passed.
+- `choices` and `branches` attach jump rules that either move to a target item or exit the flow when `end: true`. Optional route conditions read course variables so only one matching route will trigger.
+- Only simple behaviors are emitted: navigation mode, quiz gating that locks later items, conditional jumps or exits, and the variable mappings needed for those checks. More complex rule combinations are intentionally out of scope.
 
-See the `/examples/sequencing-dsl` sample for a complete `course.yml` that branches on `learner.role`, locks a debrief until a quiz is passed, and shows how the manifest builder interprets each field.
+See the `/examples/sequencing-dsl` sample for a complete `course.yml` that branches on `learner.role`, locks a debrief until a quiz is passed, and shows how the manifest builder interprets each field. For more ready-to-use patterns, copy from [docs/sequencing-recipes.md](docs/sequencing-recipes.md).
 
 ## Content Authoring
 

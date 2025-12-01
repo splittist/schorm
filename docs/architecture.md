@@ -413,7 +413,7 @@ interface Module {
   items: SCORef[];
 }
 
-type SCORef = string; // e.g., "m1-intro"
+type SCORef = string; // e.g., "intro" (lesson/quiz ID without module prefix)
 ```
 
 ## 11.2 SCO Types

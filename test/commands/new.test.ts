@@ -52,6 +52,7 @@ describe('schorm new module command', () => {
     // Verify directories were created
     expect(fs.existsSync(path.join(projectPath, 'content', 'm1'))).toBe(true);
     expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'media', 'm1'))).toBe(true);
   });
 
   it('should create a new module with default capitalized title', () => {
@@ -328,22 +329,22 @@ describe('schorm new lesson command', () => {
       stdio: 'pipe',
     });
 
-    // Verify lesson file was created
-    const lessonPath = path.join(projectPath, 'content', 'm1-intro.md');
+    // Verify lesson file was created in module subdirectory
+    const lessonPath = path.join(projectPath, 'content', 'm1', 'intro.md');
     expect(fs.existsSync(lessonPath)).toBe(true);
 
-    // Verify lesson content
+    // Verify lesson content (no module prefix in id)
     const lessonContent = fs.readFileSync(lessonPath, 'utf-8');
-    expect(lessonContent).toContain('id: m1-intro');
+    expect(lessonContent).toContain('id: intro');
     expect(lessonContent).toContain('title: "Introduction"');
     expect(lessonContent).toContain('module: m1');
     expect(lessonContent).toContain('# Introduction');
 
-    // Verify course.yml was updated
+    // Verify course.yml was updated (no module prefix in items)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
-    expect(courseConfig.modules[0].items).toContain('m1-intro');
+    expect(courseConfig.modules[0].items).toContain('intro');
   });
 
   it('should create a new lesson with default capitalized title', () => {
@@ -368,8 +369,8 @@ describe('schorm new lesson command', () => {
       stdio: 'pipe',
     });
 
-    // Verify lesson file was created
-    const lessonPath = path.join(projectPath, 'content', 'm1-concepts.md');
+    // Verify lesson file was created in module subdirectory
+    const lessonPath = path.join(projectPath, 'content', 'm1', 'concepts.md');
     expect(fs.existsSync(lessonPath)).toBe(true);
 
     // Verify lesson content has capitalized title
@@ -476,14 +477,14 @@ describe('schorm new lesson command', () => {
       stdio: 'pipe',
     });
 
-    // Verify all lessons were added to the module
+    // Verify all lessons were added to the module (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
     expect(courseConfig.modules[0].items).toHaveLength(3);
-    expect(courseConfig.modules[0].items).toContain('m1-intro');
-    expect(courseConfig.modules[0].items).toContain('m1-concepts');
-    expect(courseConfig.modules[0].items).toContain('m1-summary');
+    expect(courseConfig.modules[0].items).toContain('intro');
+    expect(courseConfig.modules[0].items).toContain('concepts');
+    expect(courseConfig.modules[0].items).toContain('summary');
   });
 
   it('should fail when course.yml does not exist', () => {
@@ -525,16 +526,16 @@ describe('schorm new lesson command', () => {
       stdio: 'pipe',
     });
 
-    // Verify lesson files were created
-    expect(fs.existsSync(path.join(projectPath, 'content', 'm1-lesson-one.md'))).toBe(true);
-    expect(fs.existsSync(path.join(projectPath, 'content', 'm1-lesson_two.md'))).toBe(true);
+    // Verify lesson files were created in module subdirectory
+    expect(fs.existsSync(path.join(projectPath, 'content', 'm1', 'lesson-one.md'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'content', 'm1', 'lesson_two.md'))).toBe(true);
 
-    // Verify they were added to module
+    // Verify they were added to module (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
-    expect(courseConfig.modules[0].items).toContain('m1-lesson-one');
-    expect(courseConfig.modules[0].items).toContain('m1-lesson_two');
+    expect(courseConfig.modules[0].items).toContain('lesson-one');
+    expect(courseConfig.modules[0].items).toContain('lesson_two');
   });
 
   it('should fail when lesson ID contains invalid characters', () => {
@@ -592,16 +593,16 @@ describe('schorm new lesson command', () => {
       stdio: 'pipe',
     });
 
-    // Verify course.yml
+    // Verify course.yml (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
-    expect(courseConfig.modules[0].items).toContain('m1-intro');
-    expect(courseConfig.modules[1].items).toContain('m2-intro');
+    expect(courseConfig.modules[0].items).toContain('intro');
+    expect(courseConfig.modules[1].items).toContain('intro');
 
-    // Verify lesson files
-    expect(fs.existsSync(path.join(projectPath, 'content', 'm1-intro.md'))).toBe(true);
-    expect(fs.existsSync(path.join(projectPath, 'content', 'm2-intro.md'))).toBe(true);
+    // Verify lesson files in module subdirectories
+    expect(fs.existsSync(path.join(projectPath, 'content', 'm1', 'intro.md'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'content', 'm2', 'intro.md'))).toBe(true);
   });
 });
 
@@ -642,22 +643,22 @@ describe('schorm new quiz command', () => {
       stdio: 'pipe',
     });
 
-    // Verify quiz file was created
-    const quizPath = path.join(projectPath, 'quizzes', 'm1-checkpoint.yml');
+    // Verify quiz file was created in module subdirectory
+    const quizPath = path.join(projectPath, 'quizzes', 'm1', 'checkpoint.yml');
     expect(fs.existsSync(quizPath)).toBe(true);
 
-    // Verify quiz content
+    // Verify quiz content (no module prefix in id)
     const quizContent = fs.readFileSync(quizPath, 'utf-8');
-    expect(quizContent).toContain('id: m1-checkpoint');
+    expect(quizContent).toContain('id: checkpoint');
     expect(quizContent).toContain('title: "Checkpoint Quiz"');
     expect(quizContent).toContain('questions:');
-    expect(quizContent).toContain('type: multiple-choice');
+    expect(quizContent).toContain('type: single-choice');
 
-    // Verify course.yml was updated
+    // Verify course.yml was updated (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
-    expect(courseConfig.modules[0].items).toContain('m1-checkpoint');
+    expect(courseConfig.modules[0].items).toContain('checkpoint');
   });
 
   it('should create a new quiz with default capitalized title', () => {
@@ -682,8 +683,8 @@ describe('schorm new quiz command', () => {
       stdio: 'pipe',
     });
 
-    // Verify quiz file was created
-    const quizPath = path.join(projectPath, 'quizzes', 'm1-quiz1.yml');
+    // Verify quiz file was created in module subdirectory
+    const quizPath = path.join(projectPath, 'quizzes', 'm1', 'quiz1.yml');
     expect(fs.existsSync(quizPath)).toBe(true);
 
     // Verify quiz content has capitalized title
@@ -790,14 +791,14 @@ describe('schorm new quiz command', () => {
       stdio: 'pipe',
     });
 
-    // Verify all quizzes were added to the module
+    // Verify all quizzes were added to the module (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
     expect(courseConfig.modules[0].items).toHaveLength(3);
-    expect(courseConfig.modules[0].items).toContain('m1-quiz1');
-    expect(courseConfig.modules[0].items).toContain('m1-quiz2');
-    expect(courseConfig.modules[0].items).toContain('m1-final');
+    expect(courseConfig.modules[0].items).toContain('quiz1');
+    expect(courseConfig.modules[0].items).toContain('quiz2');
+    expect(courseConfig.modules[0].items).toContain('final');
   });
 
   it('should fail when course.yml does not exist', () => {
@@ -839,16 +840,16 @@ describe('schorm new quiz command', () => {
       stdio: 'pipe',
     });
 
-    // Verify quiz files were created
-    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1-quiz-one.yml'))).toBe(true);
-    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1-quiz_two.yml'))).toBe(true);
+    // Verify quiz files were created in module subdirectory
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1', 'quiz-one.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1', 'quiz_two.yml'))).toBe(true);
 
-    // Verify they were added to module
+    // Verify they were added to module (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
-    expect(courseConfig.modules[0].items).toContain('m1-quiz-one');
-    expect(courseConfig.modules[0].items).toContain('m1-quiz_two');
+    expect(courseConfig.modules[0].items).toContain('quiz-one');
+    expect(courseConfig.modules[0].items).toContain('quiz_two');
   });
 
   it('should fail when quiz ID contains invalid characters', () => {
@@ -906,16 +907,16 @@ describe('schorm new quiz command', () => {
       stdio: 'pipe',
     });
 
-    // Verify course.yml
+    // Verify course.yml (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
-    expect(courseConfig.modules[0].items).toContain('m1-checkpoint');
-    expect(courseConfig.modules[1].items).toContain('m2-checkpoint');
+    expect(courseConfig.modules[0].items).toContain('checkpoint');
+    expect(courseConfig.modules[1].items).toContain('checkpoint');
 
-    // Verify quiz files
-    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1-checkpoint.yml'))).toBe(true);
-    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm2-checkpoint.yml'))).toBe(true);
+    // Verify quiz files in module subdirectories
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1', 'checkpoint.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm2', 'checkpoint.yml'))).toBe(true);
   });
 
   it('should mix lessons and quizzes in the same module', () => {
@@ -952,14 +953,14 @@ describe('schorm new quiz command', () => {
       stdio: 'pipe',
     });
 
-    // Verify all items were added to the module in order
+    // Verify all items were added to the module in order (no module prefix)
     const courseConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'course.yml'), 'utf-8')
     );
     expect(courseConfig.modules[0].items).toHaveLength(4);
-    expect(courseConfig.modules[0].items[0]).toBe('m1-intro');
-    expect(courseConfig.modules[0].items[1]).toBe('m1-checkpoint');
-    expect(courseConfig.modules[0].items[2]).toBe('m1-summary');
-    expect(courseConfig.modules[0].items[3]).toBe('m1-final');
+    expect(courseConfig.modules[0].items[0]).toBe('intro');
+    expect(courseConfig.modules[0].items[1]).toBe('checkpoint');
+    expect(courseConfig.modules[0].items[2]).toBe('summary');
+    expect(courseConfig.modules[0].items[3]).toBe('final');
   });
 });

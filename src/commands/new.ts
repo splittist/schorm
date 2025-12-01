@@ -46,9 +46,10 @@ function createLesson(lessonPath: string, title?: string): void {
     // Default title to capitalized lesson ID if not provided
     const lessonTitle = title || titleFromId(lessonId);
 
-    // Determine file path: content/<module-id>-<lesson-id>.md
-    const fileName = `${moduleId}-${lessonId}.md`;
-    const filePath = path.resolve(process.cwd(), 'content', fileName);
+    // Determine file path: content/<module-id>/<lesson-id>.md
+    const fileName = `${lessonId}.md`;
+    const moduleContentDir = path.resolve(process.cwd(), 'content', moduleId);
+    const filePath = path.join(moduleContentDir, fileName);
 
     // Check if file already exists
     if (fs.existsSync(filePath)) {
@@ -58,7 +59,7 @@ function createLesson(lessonPath: string, title?: string): void {
 
     // Create the lesson file content
     const lessonContent = `---
-id: ${moduleId}-${lessonId}
+id: ${lessonId}
 title: "${lessonTitle}"
 module: ${moduleId}
 ---
@@ -68,23 +69,22 @@ module: ${moduleId}
 Your lesson content goes here.
 `;
 
-    // Ensure content directory exists
-    const contentDir = path.resolve(process.cwd(), 'content');
-    if (!fs.existsSync(contentDir)) {
-      fs.mkdirSync(contentDir, { recursive: true });
+    // Ensure content/<module-id> directory exists
+    if (!fs.existsSync(moduleContentDir)) {
+      fs.mkdirSync(moduleContentDir, { recursive: true });
     }
 
     // Write the lesson file
     fs.writeFileSync(filePath, lessonContent, 'utf-8');
 
     // Add lesson to module's items array
-    addLessonToModule(course, moduleId, `${moduleId}-${lessonId}`);
+    addLessonToModule(course, moduleId, lessonId);
 
     // Save the updated course
     saveCourse(coursePath, course);
 
-    console.log(`✓ Created lesson "${moduleId}-${lessonId}" with title "${lessonTitle}"`);
-    console.log(`  - Created ${fileName}`);
+    console.log(`✓ Created lesson "${lessonId}" with title "${lessonTitle}"`);
+    console.log(`  - Created content/${moduleId}/${fileName}`);
     console.log(`  - Added to module "${moduleId}" in course.yml`);
   } catch (error) {
     if (error instanceof Error) {
@@ -118,9 +118,10 @@ function createModule(moduleId: string, moduleTitle?: string): void {
     // Save the updated course
     saveCourse(coursePath, course);
 
-    // Create content and quiz directories for the module
+    // Create content, quiz, and media directories for the module
     const contentDir = path.resolve(process.cwd(), 'content', moduleId);
     const quizzesDir = path.resolve(process.cwd(), 'quizzes', moduleId);
+    const mediaDir = path.resolve(process.cwd(), 'media', moduleId);
 
     if (!fs.existsSync(contentDir)) {
       fs.mkdirSync(contentDir, { recursive: true });
@@ -130,10 +131,15 @@ function createModule(moduleId: string, moduleTitle?: string): void {
       fs.mkdirSync(quizzesDir, { recursive: true });
     }
 
+    if (!fs.existsSync(mediaDir)) {
+      fs.mkdirSync(mediaDir, { recursive: true });
+    }
+
     console.log(`✓ Created module "${moduleId}" with title "${title}"`);
     console.log(`  - Added to course.yml`);
     console.log(`  - Created content/${moduleId}/`);
     console.log(`  - Created quizzes/${moduleId}/`);
+    console.log(`  - Created media/${moduleId}/`);
   } catch (error) {
     if (error instanceof Error) {
       console.error(`Error: ${error.message}`);
@@ -178,9 +184,10 @@ function createQuiz(quizPath: string, title?: string): void {
     // Default title to capitalized quiz ID if not provided
     const quizTitle = title || titleFromId(quizId);
 
-    // Determine file path: quizzes/<module-id>-<quiz-id>.yml
-    const fileName = `${moduleId}-${quizId}.yml`;
-    const filePath = path.resolve(process.cwd(), 'quizzes', fileName);
+    // Determine file path: quizzes/<module-id>/<quiz-id>.yml
+    const fileName = `${quizId}.yml`;
+    const moduleQuizzesDir = path.resolve(process.cwd(), 'quizzes', moduleId);
+    const filePath = path.join(moduleQuizzesDir, fileName);
 
     // Check if file already exists
     if (fs.existsSync(filePath)) {
@@ -189,7 +196,7 @@ function createQuiz(quizPath: string, title?: string): void {
     }
 
     // Create the quiz file content
-    const quizContent = `id: ${moduleId}-${quizId}
+    const quizContent = `id: ${quizId}
 module: ${moduleId}
 title: "${quizTitle}"
 questions:
@@ -211,23 +218,22 @@ questions:
     shuffle_options: true
 `;
 
-    // Ensure quizzes directory exists
-    const quizzesDir = path.resolve(process.cwd(), 'quizzes');
-    if (!fs.existsSync(quizzesDir)) {
-      fs.mkdirSync(quizzesDir, { recursive: true });
+    // Ensure quizzes/<module-id> directory exists
+    if (!fs.existsSync(moduleQuizzesDir)) {
+      fs.mkdirSync(moduleQuizzesDir, { recursive: true });
     }
 
     // Write the quiz file
     fs.writeFileSync(filePath, quizContent, 'utf-8');
 
     // Add quiz to module's items array
-    addQuizToModule(course, moduleId, `${moduleId}-${quizId}`);
+    addQuizToModule(course, moduleId, quizId);
 
     // Save the updated course
     saveCourse(coursePath, course);
 
-    console.log(`✓ Created quiz "${moduleId}-${quizId}" with title "${quizTitle}"`);
-    console.log(`  - Created ${fileName}`);
+    console.log(`✓ Created quiz "${quizId}" with title "${quizTitle}"`);
+    console.log(`  - Created quizzes/${moduleId}/${fileName}`);
     console.log(`  - Added to module "${moduleId}" in course.yml`);
   } catch (error) {
     if (error instanceof Error) {

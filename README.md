@@ -91,8 +91,14 @@ A typical schorm project looks like:
 course.yml             # course structure & metadata
 schorm.config.yml      # global build configuration
 content/               # Markdown lessons
+  <module-id>/         #   module subdirectory
+    *.md               #   lesson files
 quizzes/               # YAML quiz specifications
+  <module-id>/         #   module subdirectory
+    *.yml              #   quiz files
 media/                 # images, audio, video
+  <module-id>/         #   module subdirectory
+    *.*                #   media files
 theme/                 # Handlebars templates + assets
 build/                 # generated output (not committed)
 ```
@@ -176,7 +182,7 @@ Lessons are authored in Markdown with YAML frontmatter. **All lessons must inclu
 
 ```markdown
 ---
-id: m1-intro           # required: unique identifier (alphanumeric, hyphens, underscores)
+id: intro                 # required: unique identifier (alphanumeric, hyphens, underscores)
 title: "Introduction to SCORM"  # required: lesson title
 module: m1             # required: must match a module ID in course.yml
 type: lesson           # optional: reserved for future use
@@ -192,12 +198,16 @@ This is your lesson content.
 ```
 
 **Frontmatter Schema:**
-- `id`: Required. Must be unique across the course. Recommended format: `<module>-<slug>` (e.g., `m1-intro`)
+- `id`: Required. Must be unique within the module. Format: alphanumeric, hyphens, underscores (e.g., `intro`, `getting-started`)
 - `title`: Required. The lesson title displayed in the LMS
 - `module`: Required. Must reference an existing module ID defined in `course.yml`
 - `type`: Optional. If present, must be `"lesson"` (reserved for distinguishing content types in future versions)
 - `order`: Optional. Number used for future ordering features
 - Other fields (like `objectives`, `duration`) are optional and stored in lesson metadata
+
+**File Location:**
+Lesson files should be placed in module subdirectories: `content/<module-id>/<lesson-id>.md`
+For example: `content/m1/intro.md`
 
 **Validation:**
 The build process validates all lesson frontmatter and fails with clear error messages if:

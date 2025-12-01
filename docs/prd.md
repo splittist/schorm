@@ -56,8 +56,14 @@ project/
   schorm.config.yml         # global config
   course.yml                # course structure
   content/                  # Markdown lessons
+    <module-id>/            # Module subdirectory
+      *.md                  # Lesson files
   quizzes/                  # YAML quiz specs
+    <module-id>/            # Module subdirectory
+      *.yml                 # Quiz files
   media/                    # images, audio, video
+    <module-id>/            # Module subdirectory
+      *.*                   # Media files
   theme/
     layouts/*.html          # Handlebars templates
     partials/*.html
@@ -107,7 +113,7 @@ Example:
 
 ```yml
 ---
-id: m1-intro
+id: intro
 title: "The Buyer-Seller Relationship"
 module: m1
 ---
@@ -123,7 +129,7 @@ module: m1
 Strongly typed schema:
 
 ```yml
-id: m1-quiz
+id: quiz
 module: m1
 title: "Intro Quiz"
 questions:
@@ -151,8 +157,8 @@ modules:
   - id: m1
     title: "Introduction"
     items:
-      - m1-intro
-      - m1-quiz
+      - intro
+      - quiz
 ```
 
 ## 8. Templating System

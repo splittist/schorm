@@ -138,6 +138,10 @@ function extractChoices(markdown: string): Choice[] {
 /**
  * Generate SCORM manifest sequencing rules from the scenario graph
  * Creates auto-named objectives and precondition rules
+ * 
+ * For SCORM 2004 global objectives to work properly:
+ * 1. Source nodes (with choices) need objectives that WRITE to global objectives
+ * 2. Target nodes need objectives that READ from global objectives for preconditions
  */
 export function generateSequencingFromGraph(
   graph: ScenarioGraph,
@@ -159,16 +163,45 @@ export function generateSequencingFromGraph(
     }
   }
 
-  // Create items with precondition rules
+  // Create items with objectives and precondition rules
   for (const [nodeId, node] of graph.nodes) {
     const itemSeq: ItemSequencing = {
       controlMode: {
         choice: true,
         flow: false
-      }
+      },
+      objectives: []
     };
 
-    // Find all incoming edges to this node (preconditions)
+    // Add a primary objective for this SCO
+    itemSeq.objectives!.push({
+      objectiveID: `primary_${nodeId}`,
+      isPrimary: true
+    });
+
+    // For source nodes: add objectives that WRITE to global objectives for each outgoing choice
+    // These objectives will be satisfied when the learner completes this SCO
+    for (const choice of node.choices) {
+      const choiceKey = `${nodeId}_to_${choice.targetId}`;
+      const objId = choiceToObjectiveMap.get(choiceKey);
+      if (objId) {
+        // Add a local objective that maps to the global objective
+        // This allows the source SCO to write satisfaction status to the global objective
+        itemSeq.objectives!.push({
+          objectiveID: `local_${objId}`,
+          isPrimary: false,
+          mapInfo: [{
+            targetObjectiveID: objId,
+            readSatisfiedStatus: false,
+            writeSatisfiedStatus: true,
+            readNormalizedMeasure: false,
+            writeNormalizedMeasure: false
+          }]
+        });
+      }
+    }
+
+    // For target nodes: find all incoming edges (preconditions)
     const incomingObjectives: string[] = [];
     for (const [sourceId, sourceNode] of graph.nodes) {
       for (const choice of sourceNode.choices) {
@@ -177,19 +210,39 @@ export function generateSequencingFromGraph(
           const objId = choiceToObjectiveMap.get(choiceKey);
           if (objId) {
             incomingObjectives.push(objId);
+            
+            // Add a local objective that READs from the global objective
+            // This allows the target SCO to check if the choice was made
+            const localReadObjId = `read_${objId}`;
+            // Only add if not already present
+            if (!itemSeq.objectives!.some(o => o.objectiveID === localReadObjId)) {
+              itemSeq.objectives!.push({
+                objectiveID: localReadObjId,
+                isPrimary: false,
+                mapInfo: [{
+                  targetObjectiveID: objId,
+                  readSatisfiedStatus: true,
+                  writeSatisfiedStatus: false,
+                  readNormalizedMeasure: false,
+                  writeNormalizedMeasure: false
+                }]
+              });
+            }
           }
         }
       }
     }
 
     // Add preconditions for non-start nodes
+    // Use the local read objectives to check if any incoming choice was satisfied
     if (nodeId !== graph.start && incomingObjectives.length > 0) {
       itemSeq.preconditions = [{
         ruleConditions: incomingObjectives.map(objId => ({
           condition: 'satisfied' as const,
-          objectiveID: objId
+          objectiveID: `read_${objId}`,
+          operator: 'not' as const
         })),
-        conditionCombination: 'any' as const, // Any incoming path satisfies
+        conditionCombination: 'all' as const, // Disable if ALL incoming choices are NOT satisfied
         ruleAction: 'disabled' as const
       }];
     }

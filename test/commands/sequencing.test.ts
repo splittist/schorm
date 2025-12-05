@@ -307,4 +307,124 @@ Content.
     expect(manifest).not.toContain('imsss:sequencing');
     expect(manifest).not.toContain('imsss:controlMode');
   });
+
+  it('should build a course with scenario mode looking in module subdirectory', () => {
+    const projectName = 'scenario-subdir-course';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Create project directory structure
+    fs.mkdirSync(projectPath, { recursive: true });
+
+    // Create schorm.config.yml
+    fs.writeFileSync(
+      path.join(projectPath, 'schorm.config.yml'),
+      yaml.stringify({
+        scorm_version: '2004-4th',
+        theme: path.join(__dirname, '..', '..', 'theme-default'),
+      })
+    );
+
+    // Create lesson directory in module subdirectory (content/email-scenario)
+    const lessonDir = path.join(projectPath, 'content', 'email-scenario');
+    fs.mkdirSync(lessonDir, { recursive: true });
+
+    // Create scenario files
+    fs.writeFileSync(
+      path.join(lessonDir, 'the-incident.md'),
+      `---
+id: the-incident
+title: The Incident
+module: email-scenario
+---
+
+# The Incident
+
+You just sent an email to the wrong person!
+
+## What do you do?
+
+- [Try to recall the message](recall-attempt.md)
+- [Own the mistake immediately](owning-it.md)
+`
+    );
+
+    fs.writeFileSync(
+      path.join(lessonDir, 'recall-attempt.md'),
+      `---
+id: recall-attempt
+title: The Recall Attempt
+module: email-scenario
+ending: true
+---
+
+# Recall Attempt
+
+You tried to recall the message.
+`
+    );
+
+    fs.writeFileSync(
+      path.join(lessonDir, 'owning-it.md'),
+      `---
+id: owning-it
+title: Owning It
+module: email-scenario
+ending: true
+---
+
+# Owning It
+
+You owned your mistake.
+`
+    );
+
+    // Create course.yml with scenario mode
+    const courseConfig = {
+      id: projectName,
+      title: 'Scenario Test',
+      modules: [
+        {
+          id: 'email-scenario',
+          title: 'Email Crisis Management',
+          items: [],
+          sequencing: {
+            mode: 'scenario',
+            scenario: {
+              start: 'the-incident.md',
+            },
+          },
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Create empty quizzes directory
+    fs.mkdirSync(path.join(projectPath, 'quizzes'), { recursive: true });
+
+    // Run build
+    const output = execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Verify build succeeded with scenario scenes
+    expect(output).toContain('Building scenario graph for module "email-scenario"');
+    expect(output).toContain('Found 3 scenes');
+    expect(output).toContain('2 endings');
+    expect(output).toContain('the-incident.html (scenario)');
+    expect(output).toContain('recall-attempt.html (scenario)');
+    expect(output).toContain('owning-it.html (scenario)');
+
+    // Verify manifest was created
+    const manifestPath = path.join(projectPath, 'build', 'imsmanifest.xml');
+    expect(fs.existsSync(manifestPath)).toBe(true);
+
+    // Verify HTML files were created
+    expect(fs.existsSync(path.join(projectPath, 'build', 'the-incident.html'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'build', 'recall-attempt.html'))).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'build', 'owning-it.html'))).toBe(true);
+  });
 });

@@ -202,11 +202,16 @@ export function generateSequencingFromGraph(
     }
 
     // For target nodes: find all incoming edges (preconditions)
+    // An incoming edge is when another node has a choice that targets this node's file
     const incomingObjectives: string[] = [];
     for (const [sourceId, sourceNode] of graph.nodes) {
       for (const choice of sourceNode.choices) {
+        // choice.targetId contains the filename (e.g., 'middle.md')
+        // node.file also contains the filename
+        // They match when this node is the target of the choice
         if (choice.targetId === node.file) {
-          const choiceKey = `${sourceId}_to_${node.file}`;
+          // Use the same key format as when building the map
+          const choiceKey = `${sourceId}_to_${choice.targetId}`;
           const objId = choiceToObjectiveMap.get(choiceKey);
           if (objId) {
             incomingObjectives.push(objId);
@@ -234,7 +239,10 @@ export function generateSequencingFromGraph(
     }
 
     // Add preconditions for non-start nodes
-    // Use the local read objectives to check if any incoming choice was satisfied
+    // Logic: Disable this item if NONE of the incoming paths were taken
+    // Implementation: condition="satisfied" + operator="not" for each incoming objective
+    // with conditionCombination="all" means: if (NOT obj1.satisfied AND NOT obj2.satisfied) then disable
+    // This effectively means: enable if ANY incoming choice was made
     if (nodeId !== graph.start && incomingObjectives.length > 0) {
       itemSeq.preconditions = [{
         ruleConditions: incomingObjectives.map(objId => ({
@@ -242,7 +250,7 @@ export function generateSequencingFromGraph(
           objectiveID: `read_${objId}`,
           operator: 'not' as const
         })),
-        conditionCombination: 'all' as const, // Disable if ALL incoming choices are NOT satisfied
+        conditionCombination: 'all' as const,
         ruleAction: 'disabled' as const
       }];
     }

@@ -116,7 +116,7 @@ All of this is zipped by schorm package into a standards-compliant bundle.
 
 `course.yml` supports progressively richer sequencing controls to keep YAML stable and LLM-friendly:
 
-- `mode`: `linear` or `free` navigation for items in the module (defaults to `free`)
+- `mode`: `linear`, `free`, or `scenario` navigation for items in the module (defaults to `free`). Use `scenario` for "choose your own adventure" courses where learners follow links between markdown files—see [sequencing-recipes.md](docs/sequencing-recipes.md) for details.
 - `gate.quiz`: lock later items until a quiz is passed
 - `branches`: named entry points into a navigation graph
 - `choices`: conditional routes that jump to other items or end the flow

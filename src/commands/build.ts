@@ -105,7 +105,9 @@ export const buildCommand = new Command('build')
         for (const module of scenarioModules) {
           try {
             const scenarioConfig = module.sequencing!.scenario!;
-            const contentDir = path.resolve(scenarioConfig.contentDir || 'content');
+            // Use module subdirectory within content directory
+            const baseContentDir = scenarioConfig.contentDir || 'content';
+            const contentDir = path.resolve(baseContentDir, module.id);
             
             log(`   📖 Building scenario graph for module "${module.id}"...`);
             const graph = await buildScenarioGraph(contentDir, scenarioConfig.start);

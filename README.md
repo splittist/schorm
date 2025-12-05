@@ -7,6 +7,7 @@ A CLI-driven static-site generator for SCORM 2004 e-learning content.
 `schorm` is a command-line tool for building SCORM 2004 packages using a workflow inspired by modern static site generators (e.g., Hugo, MkDocs, Eleventy).
 
 Instead of using a heavy CMS or visual authoring tool, schorm lets you create SCORM-compliant courses using:
+
 - Markdown for lessons
 - YAML/JSON for quizzes and metadata
 - Handlebars templates for HTML layouts
@@ -14,6 +15,7 @@ Instead of using a heavy CMS or visual authoring tool, schorm lets you create SC
 - A clean CLI for init → build → preview → package
 
 This makes SCORM content:
+
 - version-controllable
 - LLM-friendly
 - developer-friendly
@@ -30,6 +32,7 @@ Core architecture, CLI scaffolding, default theme, and quiz scoring functionalit
 Not suitable for production use yet.
 
 ### Recent Milestones
+
 - **v0.3**: Browser-side quiz scoring with SCORM integration
   - Five question types supported (single-choice, multiple-response, true-false, fill-blank, matching)
   - SCORM 2004 API integration with preview mode fallback
@@ -39,6 +42,7 @@ Not suitable for production use yet.
 ## Features (Current & Planned)
 
 **MVP Goals**
+
 - 🔧 `schorm init` — create a new SCORM project with default structure
 - 🧱 `schorm new` — scaffold modules, lessons, and quizzes
 - 🏗️ `schorm build` — render content → HTML + templates → SCORM-ready structure
@@ -47,6 +51,7 @@ Not suitable for production use yet.
 - 🔍 `schorm validate` — manifest + structure checks
 
 **Core Principles**
+
 - CLI-first, file-first
 - Static-site generator mental model
 - LLM-friendly schemas
@@ -54,6 +59,7 @@ Not suitable for production use yet.
 - Deterministic builds
 
 **Planned Later**
+
 - Linting rules (schorm lint)
 - JSON schemas (schorm schema)
 - Course graph export (schorm graph)
@@ -64,22 +70,27 @@ Not suitable for production use yet.
 ## **Quick Start** (once implemented)
 
 ### Install globally
+
 `npm install -g schorm`
 
 ### Create a new course project
+
 `schorm init northhaven-onboarding`
 `cd northhaven-onboarding`
 
 ### Add content
+
 `schorm new module m1 "Introduction"`
 `schorm new lesson m1/intro "The Owner–Operator Relationship"`
 `schorm new quiz m1/quiz "Intro Quiz"`
 
 ### Build and preview locally
+
 `schorm build`
 `schorm preview --open`
 
 ### Validate & package as a SCORM 2004 ZIP
+
 `schorm validate`
 `schorm package`
 
@@ -87,7 +98,7 @@ Not suitable for production use yet.
 
 A typical schorm project looks like:
 
-```
+```txt
 course.yml             # course structure & metadata
 schorm.config.yml      # global build configuration
 content/               # Markdown lessons
@@ -104,6 +115,7 @@ build/                 # generated output (not committed)
 ```
 
 The output of schorm build includes:
+
 - HTML lessons/quizzes
 - media files
 - runtime JS
@@ -198,6 +210,7 @@ This is your lesson content.
 ```
 
 **Frontmatter Schema:**
+
 - `id`: Required. Must be unique within the module. Format: alphanumeric, hyphens, underscores (e.g., `intro`, `getting-started`)
 - `title`: Required. The lesson title displayed in the LMS
 - `module`: Required. Must reference an existing module ID defined in `course.yml`
@@ -211,6 +224,7 @@ For example: `content/m1/intro.md`
 
 **Validation:**
 The build process validates all lesson frontmatter and fails with clear error messages if:
+
 - Required fields are missing
 - The `module` references a non-existent module
 - The `id` contains invalid characters (only alphanumeric, hyphens, and underscores allowed)
@@ -221,22 +235,26 @@ The build process validates all lesson frontmatter and fails with clear error me
 Embed audio and video directly in your Markdown lessons using shortcodes:
 
 **Audio:**
+
 ```markdown
 {{audio src="../media/m1/intro.mp3" title="Introduction Audio"}}
 ```
 
 **Video:**
+
 ```markdown
 {{video src="../media/m1/demo.mp4" poster="../media/m1/poster.jpg" title="Demo Video"}}
 ```
 
 **Attributes:**
+
 - `src` (required) — path to media file
 - `title` (optional) — descriptive label
 - `poster` (video only) — poster/thumbnail image
 - `id` (optional) — custom ID (auto-generated if omitted)
 
 Both single and double quotes are supported:
+
 ```markdown
 {{audio src='file.mp3' title='My Audio'}}
 ```
@@ -252,20 +270,22 @@ Media shortcodes are processed during the build and rendered inline where they a
 Most SCORM tools assume non-technical authors and rely on heavyweight GUIs, databases, or server-side CMSes.
 
 `schorm` takes a different approach:
+
 - treat SCORM content as a static site
 - represent everything as files (Markdown, YAML, CSS)
 - keep authors close to their content
 - keep LMS-specific logic inside a small runtime library
 
-2. Great for automation and AI workflows
+1. Great for automation and AI workflows
 
 Since `schorm` is file-driven and uses strict JSON/YAML schemas, it is ideal for:
+
 - LLM content generation
 - structured course creation agents
 - CI pipelines that auto-build and validate SCORM packages
 - GitOps workflows
 
-3. Transparent, maintainable, durable
+1. Transparent, maintainable, durable
 
 Your course is just a folder of files.
 Everything is inspectable.
@@ -277,6 +297,7 @@ Everything is version-controllable.
 ## Development Setup
 
 Requirements:
+
 - Node.js 20+
 - npm or pnpm
 
@@ -287,6 +308,7 @@ git clone https://github.com/<your-org>/schorm.git
 cd schorm
 npm install
 ```
+
 Build & run in dev:
 
 ```bash
@@ -300,6 +322,7 @@ npm test        # vitest
 Discussion, issues, and PRs are welcome.
 
 Useful docs:
+
 - `/docs/prd.md` — Product Requirements (draft)
 - `/docs/architecture.md` (draft)
 

@@ -426,5 +426,219 @@ You owned your mistake.
     expect(fs.existsSync(path.join(projectPath, 'build', 'the-incident.html'))).toBe(true);
     expect(fs.existsSync(path.join(projectPath, 'build', 'recall-attempt.html'))).toBe(true);
     expect(fs.existsSync(path.join(projectPath, 'build', 'owning-it.html'))).toBe(true);
+
+    // Verify manifest structure for scenario
+    const manifest = fs.readFileSync(manifestPath, 'utf-8');
+    
+    // Should have sequencing with choice control mode
+    expect(manifest).toContain('imsss:sequencing');
+    expect(manifest).toContain('choice="true"');
+    
+    // Should have objectives with proper mapInfo for global objectives
+    expect(manifest).toContain('imsss:objectives');
+    expect(manifest).toContain('imsss:mapInfo');
+    
+    // Should have precondition rules for non-start nodes
+    expect(manifest).toContain('imsss:preConditionRule');
+  });
+
+  it('should not create duplicate resources for scenario modules', () => {
+    const projectName = 'scenario-no-duplicates';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Create project directory structure
+    fs.mkdirSync(projectPath, { recursive: true });
+
+    // Create schorm.config.yml
+    fs.writeFileSync(
+      path.join(projectPath, 'schorm.config.yml'),
+      yaml.stringify({
+        scorm_version: '2004-4th',
+        theme: path.join(__dirname, '..', '..', 'theme-default'),
+      })
+    );
+
+    // Create lesson directory in module subdirectory
+    const lessonDir = path.join(projectPath, 'content', 'test-scenario');
+    fs.mkdirSync(lessonDir, { recursive: true });
+
+    // Create scenario files
+    fs.writeFileSync(
+      path.join(lessonDir, 'start.md'),
+      `---
+id: start
+title: Start Scene
+module: test-scenario
+---
+
+# Start
+
+[Go to End](end.md)
+`
+    );
+
+    fs.writeFileSync(
+      path.join(lessonDir, 'end.md'),
+      `---
+id: end
+title: End Scene
+module: test-scenario
+ending: true
+---
+
+# End
+`
+    );
+
+    // Create course.yml with scenario mode
+    const courseConfig = {
+      id: projectName,
+      title: 'No Duplicates Test',
+      modules: [
+        {
+          id: 'test-scenario',
+          title: 'Test Scenario',
+          items: [],
+          sequencing: {
+            mode: 'scenario',
+            scenario: {
+              start: 'start.md',
+            },
+          },
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Create empty quizzes directory
+    fs.mkdirSync(path.join(projectPath, 'quizzes'), { recursive: true });
+
+    // Run build
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Verify manifest was created
+    const manifestPath = path.join(projectPath, 'build', 'imsmanifest.xml');
+    const manifest = fs.readFileSync(manifestPath, 'utf-8');
+
+    // Count resource identifiers - should have exactly 3:
+    // 1. RES-index
+    // 2. RES-start
+    // 3. RES-end
+    const resourceMatches = manifest.match(/<resource identifier="RES-/g);
+    expect(resourceMatches).not.toBeNull();
+    expect(resourceMatches!.length).toBe(3);
+
+    // Verify no duplicate identifiers
+    expect((manifest.match(/identifier="RES-start"/g) || []).length).toBe(1);
+    expect((manifest.match(/identifier="RES-end"/g) || []).length).toBe(1);
+  });
+
+  it('should define global objectives properly for scenario preconditions', () => {
+    const projectName = 'scenario-objectives';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Create project directory structure
+    fs.mkdirSync(projectPath, { recursive: true });
+
+    // Create schorm.config.yml
+    fs.writeFileSync(
+      path.join(projectPath, 'schorm.config.yml'),
+      yaml.stringify({
+        scorm_version: '2004-4th',
+        theme: path.join(__dirname, '..', '..', 'theme-default'),
+      })
+    );
+
+    // Create lesson directory in module subdirectory
+    const lessonDir = path.join(projectPath, 'content', 'obj-scenario');
+    fs.mkdirSync(lessonDir, { recursive: true });
+
+    // Create scenario files with a choice
+    fs.writeFileSync(
+      path.join(lessonDir, 'start.md'),
+      `---
+id: start
+title: Start
+module: obj-scenario
+---
+
+# Start
+
+[Go to middle](middle.md)
+`
+    );
+
+    fs.writeFileSync(
+      path.join(lessonDir, 'middle.md'),
+      `---
+id: middle
+title: Middle
+module: obj-scenario
+ending: true
+---
+
+# Middle
+`
+    );
+
+    // Create course.yml with scenario mode
+    const courseConfig = {
+      id: projectName,
+      title: 'Objectives Test',
+      modules: [
+        {
+          id: 'obj-scenario',
+          title: 'Objectives Scenario',
+          items: [],
+          sequencing: {
+            mode: 'scenario',
+            scenario: {
+              start: 'start.md',
+            },
+          },
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Create empty quizzes directory
+    fs.mkdirSync(path.join(projectPath, 'quizzes'), { recursive: true });
+
+    // Run build
+    execSync(`${CLI_PATH} build`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Verify manifest was created
+    const manifestPath = path.join(projectPath, 'build', 'imsmanifest.xml');
+    const manifest = fs.readFileSync(manifestPath, 'utf-8');
+
+    // The source node (start) should have an objective that writes to the global objective
+    expect(manifest).toContain('writeSatisfiedStatus="true"');
+    
+    // The target node (middle) should have an objective that reads from the global objective
+    expect(manifest).toContain('readSatisfiedStatus="true"');
+    
+    // The precondition should reference the read objective
+    expect(manifest).toContain('referencedObjective="read_obj_obj-scenario_0"');
+    
+    // The read objective should be defined in the middle item
+    expect(manifest).toContain('objectiveID="read_obj_obj-scenario_0"');
+    
+    // The local write objective should be defined in the start item
+    expect(manifest).toContain('objectiveID="local_obj_obj-scenario_0"');
+    
+    // Both objectives should map to the same global objective
+    expect(manifest).toContain('targetObjectiveID="obj_obj-scenario_0"');
   });
 });

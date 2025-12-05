@@ -161,9 +161,17 @@ export const buildCommand = new Command('build')
       const lessonFiles = findLessons(contentDir);
       const lessons: Lesson[] = [];
 
+      // Create a set of scenario lesson IDs to avoid duplicates
+      const scenarioLessonIds = new Set(scenarioLessons.map(l => l.id));
+
       for (const file of lessonFiles) {
         try {
           const lesson = parseLesson(file, course);
+          // Skip lessons that are already part of a scenario module
+          if (scenarioLessonIds.has(lesson.id)) {
+            log(`   ⊘ ${lesson.id}: ${lesson.title} (already processed in scenario)`);
+            continue;
+          }
           lessons.push(lesson);
           log(`   ✓ ${lesson.id}: ${lesson.title}`);
         } catch (error) {
@@ -177,7 +185,10 @@ export const buildCommand = new Command('build')
         }
       }
 
-      if (lessons.length === 0 && lessonFiles.length > 0) {
+      // Only fail if there are no lessons at all (including scenario lessons)
+      // and some lesson files exist but all failed to parse
+      const totalLessons = lessons.length + scenarioLessons.length;
+      if (totalLessons === 0 && lessonFiles.length > 0 && scenarioLessons.length === 0) {
         // All lessons failed to parse
         throw new Error('All lessons failed to parse');
       }

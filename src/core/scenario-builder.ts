@@ -291,6 +291,8 @@ export function processScenarioLinks(html: string, choices: Choice[]): string {
     // Note: The label in HTML will be transformed by markdown-it's typographer
     // (e.g., "..." becomes "…", straight quotes " become curly quotes ")
     // So we need to apply the same transformations to match it
+    // renderInline() also HTML-escapes the content (e.g., < becomes &lt;)
+    // so we don't need additional escaping (which would cause double-escaping)
     const normalizedLabel = md.renderInline(choice.label);
     const linkPattern = new RegExp(
       `<a href="${escapeRegex(choice.targetId)}"[^>]*>${escapeRegex(normalizedLabel)}</a>`,

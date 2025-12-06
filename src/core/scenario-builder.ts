@@ -281,12 +281,15 @@ export function processScenarioLinks(html: string, choices: Choice[]): string {
   for (const choice of choices) {
     // Convert markdown link to button
     // Match <a href="target.md">Label</a>
+    // Note: The label in HTML will be HTML-encoded by markdown-it,
+    // so we need to escape it for HTML first, then for regex
+    const htmlEncodedLabel = escapeHtml(choice.label);
     const linkPattern = new RegExp(
-      `<a href="${escapeRegex(choice.targetId)}"[^>]*>${escapeRegex(choice.label)}</a>`,
+      `<a href="${escapeRegex(choice.targetId)}"[^>]*>${escapeRegex(htmlEncodedLabel)}</a>`,
       'g'
     );
     
-    const button = `<button class="scenario-choice" data-target="${escapeHtml(choice.targetId)}">${escapeHtml(choice.label)}</button>`;
+    const button = `<button class="scenario-choice" data-target="${escapeHtml(choice.targetId)}">${htmlEncodedLabel}</button>`;
     
     processed = processed.replace(linkPattern, button);
   }

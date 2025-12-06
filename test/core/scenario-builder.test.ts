@@ -4,7 +4,9 @@ import { processScenarioLinks } from '../../src/core/scenario-builder.js';
 
 describe('Scenario Builder', () => {
   describe('processScenarioLinks', () => {
-    const md = new MarkdownIt();
+    const md = new MarkdownIt({
+      typographer: true
+    });
 
     it('should convert simple markdown links to buttons', () => {
       const choices = [
@@ -32,22 +34,24 @@ describe('Scenario Builder', () => {
       
       expect(result).toContain('<button class="scenario-choice"');
       expect(result).toContain('data-target="target.md"');
-      expect(result).toContain('&quot;straight quotes&quot;');
+      // With typographer enabled, straight quotes become curly quotes
+      expect(result).toContain('\u201Cstraight quotes\u201D');
       expect(result).not.toContain('<a href="target.md"');
     });
 
     it('should convert links with curly double quotes to buttons', () => {
       const choices = [
-        { label: 'Choice with "curly quotes"', targetId: 'target.md' }
+        { label: 'Choice with \u201Ccurly quotes\u201D', targetId: 'target.md' }
       ];
-      const markdown = `[Choice with "curly quotes"](target.md)`;
+      const markdown = `[Choice with \u201Ccurly quotes\u201D](target.md)`;
       const html = md.render(markdown);
       
       const result = processScenarioLinks(html, choices);
       
       expect(result).toContain('<button class="scenario-choice"');
       expect(result).toContain('data-target="target.md"');
-      expect(result).toContain('&quot;curly quotes&quot;');
+      // Curly quotes remain as-is (not HTML-encoded)
+      expect(result).toContain('\u201Ccurly quotes\u201D');
       expect(result).not.toContain('<a href="target.md"');
     });
 
@@ -145,7 +149,8 @@ describe('Scenario Builder', () => {
       expect(result).toContain('<button class="scenario-choice"');
       expect(result).toContain('&lt;tags&gt;');
       expect(result).toContain('&amp;');
-      expect(result).toContain('&quot;quotes&quot;');
+      // With typographer enabled, straight quotes become curly quotes
+      expect(result).toContain('\u201Cquotes\u201D');
       expect(result).not.toContain('<tags>');
     });
   });

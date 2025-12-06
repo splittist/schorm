@@ -55,7 +55,7 @@ describe('Module Sequencing Validation', () => {
     };
 
     expect(() => validateModuleSequencing(module)).toThrow(
-      /sequencing.mode must be "linear" or "free"/
+      /sequencing.mode must be "linear", "free", or "scenario"/
     );
   });
 

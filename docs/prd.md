@@ -256,10 +256,18 @@ These compile to minimal `<imsss:sequencing>` snippets.
 Functions provided:
 
 ```js
-schormRuntime.initializeSco()
-schormRuntime.markScoComplete()
-schormRuntime.mediaCompleted(id)
-schormRuntime.quizPassed(score)
+SchormRuntime.init()              // Initialize SCORM session
+SchormRuntime.setValue(path, val) // Set SCORM data model value
+SchormRuntime.getValue(path)      // Get SCORM data model value
+SchormRuntime.commit()            // Commit data to LMS
+SchormRuntime.terminate()         // Terminate SCORM session
+```
+
+Higher-level utilities:
+```js
+SchormQuiz.markScoComplete(quizId, result)  // Set quiz completion/score
+SchormMedia.markMediaCompleted(id)          // Mark media as completed
+SchormQuiz.quizPassed(scaledScore, passingScore)  // Check if quiz passed
 ```
 
 Other capabilities:

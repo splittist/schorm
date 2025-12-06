@@ -440,6 +440,34 @@ You owned your mistake.
     
     // Should have precondition rules for non-start nodes
     expect(manifest).toContain('imsss:preConditionRule');
+    
+    // Verify generated HTML uses correct runtime API calls
+    const scenarioHtml = fs.readFileSync(path.join(projectPath, 'build', 'the-incident.html'), 'utf-8');
+    
+    // Should use SchormRuntime namespace (not old global functions)
+    expect(scenarioHtml).toContain('SchormRuntime.init()');
+    expect(scenarioHtml).toContain('SchormRuntime.setValue');
+    expect(scenarioHtml).toContain('SchormRuntime.getValue');
+    expect(scenarioHtml).toContain('SchormRuntime.commit()');
+    expect(scenarioHtml).toContain('SchormRuntime.terminate()');
+    
+    // Should NOT use old global function names
+    expect(scenarioHtml).not.toContain('initializeSco()');
+    expect(scenarioHtml).not.toContain('completeSco()');
+    
+    // Should get objectives count and find next available index
+    expect(scenarioHtml).toContain('cmi.objectives._count');
+    expect(scenarioHtml).toContain('objectiveIndex');
+    
+    // Should set objectives using dynamic index variable
+    expect(scenarioHtml).toContain('cmi.objectives.\' + objectiveIndex + \'.id');
+    expect(scenarioHtml).toContain('cmi.objectives.\' + objectiveIndex + \'.success_status');
+    expect(scenarioHtml).toContain('cmi.objectives.\' + objectiveIndex + \'.completion_status');
+    
+    // Verify ending scene uses runtime API correctly
+    const endingHtml = fs.readFileSync(path.join(projectPath, 'build', 'owning-it.html'), 'utf-8');
+    expect(endingHtml).toContain('SchormRuntime.commit()');
+    expect(endingHtml).toContain('SchormRuntime.terminate()');
   });
 
   it('should not create duplicate resources for scenario modules', () => {

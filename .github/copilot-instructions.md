@@ -110,7 +110,7 @@ Focus on these data model elements:
 
 ### Runtime JS (`theme-default/assets/schorm-runtime.js`)
 - Handles SCORM API discovery (searches for `window.API_1484_11`)
-- Provides wrappers: `initializeSco()`, `setValue()`, `getValue()`, `completeSco()`
+- Provides `SchormRuntime` object with methods: `init()`, `setValue()`, `getValue()`, `commit()`, `terminate()`
 - Must be copied to build output as static asset
 - Preview server injects mock SCORM API for local testing
 

@@ -118,14 +118,14 @@
     <script src="assets/schorm-runtime.js"></script>
     <script>
         // Initialize SCORM
-        initializeSco();
+        SchormRuntime.init();
         
         const currentScene = '{{lesson.id}}';
         const isEnding = {{#if lesson.isEnding}}true{{else}}false{{/if}};
         const masteryScore = {{#if lesson.masteryScore}}{{lesson.masteryScore}}{{else}}null{{/if}};
         
         // Save current location
-        setValue('cmi.location', currentScene);
+        SchormRuntime.setValue('cmi.location', currentScene);
         
         {{#unless lesson.isEnding}}
         // Handle choice buttons (non-ending scenes)
@@ -146,20 +146,24 @@
                 const choiceKey = currentScene + '_to_' + target;
                 const objectiveId = 'obj_{{lesson.module}}_' + choiceKey.replace(/[^a-zA-Z0-9]/g, '_');
                 
-                setValue('cmi.objectives.' + objectiveId + '.success_status', 'passed');
+                // Set the objective at index 0 (or find next available index)
+                SchormRuntime.setValue('cmi.objectives.0.id', objectiveId);
+                SchormRuntime.setValue('cmi.objectives.0.success_status', 'passed');
+                SchormRuntime.setValue('cmi.objectives.0.completion_status', 'completed');
                 
                 // Save choice in suspend data for debugging/tracking
                 try {
-                    const suspendData = JSON.parse(getValue('cmi.suspend_data') || '{}');
+                    const suspendData = JSON.parse(SchormRuntime.getValue('cmi.suspend_data') || '{}');
                     suspendData[currentScene] = target;
-                    setValue('cmi.suspend_data', JSON.stringify(suspendData));
+                    SchormRuntime.setValue('cmi.suspend_data', JSON.stringify(suspendData));
                 } catch (e) {
                     console.warn('Failed to save choice to suspend_data', e);
                 }
                 
                 // Let SCORM handle navigation - exit and let LMS reload
-                setValue('cmi.exit', 'suspend');
-                completeSco();
+                SchormRuntime.setValue('cmi.exit', 'suspend');
+                SchormRuntime.commit();
+                SchormRuntime.terminate();
                 
                 // Fallback: navigate directly if LMS doesn't handle it
                 setTimeout(function() {
@@ -170,25 +174,27 @@
         {{else}}
         // Ending scene - set final status
         if (masteryScore !== null) {
-            setValue('cmi.score.scaled', masteryScore.toString());
-            setValue('cmi.score.min', '0');
-            setValue('cmi.score.max', '1');
-            setValue('cmi.score.raw', (masteryScore * 100).toString());
+            SchormRuntime.setValue('cmi.score.scaled', masteryScore.toString());
+            SchormRuntime.setValue('cmi.score.min', '0');
+            SchormRuntime.setValue('cmi.score.max', '1');
+            SchormRuntime.setValue('cmi.score.raw', (masteryScore * 100).toString());
             
             // Determine success based on mastery threshold
             const passThreshold = 0.6;
-            setValue('cmi.success_status', masteryScore >= passThreshold ? 'passed' : 'failed');
+            SchormRuntime.setValue('cmi.success_status', masteryScore >= passThreshold ? 'passed' : 'failed');
         }
         
-        setValue('cmi.completion_status', 'completed');
+        SchormRuntime.setValue('cmi.completion_status', 'completed');
         
-        // Auto-complete after brief delay or on any click
+        // Commit and terminate after brief delay or on any click
         setTimeout(function() {
-            completeSco();
+            SchormRuntime.commit();
+            SchormRuntime.terminate();
         }, 3000);
         
         document.addEventListener('click', function() {
-            completeSco();
+            SchormRuntime.commit();
+            SchormRuntime.terminate();
         });
         {{/unless}}
     </script>

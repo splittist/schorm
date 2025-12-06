@@ -331,11 +331,13 @@ Its responsibilities:
 - Provide fallback mock API in preview mode
 
 ### 8.2 SCORM Call Wrappers
-- initializeSco()
-- setValue(path, value)
-- getValue(path)
-- commit()
-- completeSco()
+
+The runtime provides a `SchormRuntime` object with the following methods:
+- `SchormRuntime.init()` - Initialize SCORM session
+- `SchormRuntime.setValue(path, value)` - Set a SCORM data model value
+- `SchormRuntime.getValue(path)` - Get a SCORM data model value
+- `SchormRuntime.commit()` - Commit data to LMS
+- `SchormRuntime.terminate()` - Terminate SCORM session
 
 These wrappers provide uniform error handling and consistent logging.
 

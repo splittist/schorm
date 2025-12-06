@@ -440,6 +440,30 @@ You owned your mistake.
     
     // Should have precondition rules for non-start nodes
     expect(manifest).toContain('imsss:preConditionRule');
+    
+    // Verify generated HTML uses correct runtime API calls
+    const scenarioHtml = fs.readFileSync(path.join(projectPath, 'build', 'the-incident.html'), 'utf-8');
+    
+    // Should use SchormRuntime namespace (not old global functions)
+    expect(scenarioHtml).toContain('SchormRuntime.init()');
+    expect(scenarioHtml).toContain('SchormRuntime.setValue');
+    expect(scenarioHtml).toContain('SchormRuntime.getValue');
+    expect(scenarioHtml).toContain('SchormRuntime.commit()');
+    expect(scenarioHtml).toContain('SchormRuntime.terminate()');
+    
+    // Should NOT use old global function names
+    expect(scenarioHtml).not.toContain('initializeSco()');
+    expect(scenarioHtml).not.toContain('completeSco()');
+    
+    // Should set objectives using index (not ID as path)
+    expect(scenarioHtml).toContain('cmi.objectives.0.id');
+    expect(scenarioHtml).toContain('cmi.objectives.0.success_status');
+    expect(scenarioHtml).toContain('cmi.objectives.0.completion_status');
+    
+    // Verify ending scene uses runtime API correctly
+    const endingHtml = fs.readFileSync(path.join(projectPath, 'build', 'owning-it.html'), 'utf-8');
+    expect(endingHtml).toContain('SchormRuntime.commit()');
+    expect(endingHtml).toContain('SchormRuntime.terminate()');
   });
 
   it('should not create duplicate resources for scenario modules', () => {

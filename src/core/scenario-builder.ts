@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import matter from 'gray-matter';
+import MarkdownIt from 'markdown-it';
 import type { ItemSequencing } from './manifest.js';
 
 export interface ScenarioGraph {
@@ -278,15 +279,27 @@ export function generateSequencingFromGraph(
 export function processScenarioLinks(html: string, choices: Choice[]): string {
   let processed = html;
   
+  // Create a markdown-it instance with typographer enabled
+  // to match the same transformations applied during rendering
+  const md = new MarkdownIt({
+    typographer: true
+  });
+  
   for (const choice of choices) {
     // Convert markdown link to button
     // Match <a href="target.md">Label</a>
+    // Note: The label in HTML will be transformed by markdown-it's typographer
+    // (e.g., "..." becomes "…", straight quotes " become curly quotes ")
+    // So we need to apply the same transformations to match it
+    // renderInline() also HTML-escapes the content (e.g., < becomes &lt;)
+    // so we don't need additional escaping (which would cause double-escaping)
+    const normalizedLabel = md.renderInline(choice.label);
     const linkPattern = new RegExp(
-      `<a href="${escapeRegex(choice.targetId)}"[^>]*>${escapeRegex(choice.label)}</a>`,
+      `<a href="${escapeRegex(choice.targetId)}"[^>]*>${escapeRegex(normalizedLabel)}</a>`,
       'g'
     );
     
-    const button = `<button class="scenario-choice" data-target="${escapeHtml(choice.targetId)}">${escapeHtml(choice.label)}</button>`;
+    const button = `<button class="scenario-choice" data-target="${escapeHtml(choice.targetId)}">${normalizedLabel}</button>`;
     
     processed = processed.replace(linkPattern, button);
   }

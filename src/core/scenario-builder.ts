@@ -138,6 +138,10 @@ function extractChoices(markdown: string): Choice[] {
 /**
  * Generate SCORM manifest sequencing rules from the scenario graph
  * Creates auto-named objectives and precondition rules
+ * 
+ * For SCORM 2004 global objectives to work properly:
+ * 1. Source nodes (with choices) need objectives that WRITE to global objectives
+ * 2. Target nodes need objectives that READ from global objectives for preconditions
  */
 export function generateSequencingFromGraph(
   graph: ScenarioGraph,
@@ -159,37 +163,94 @@ export function generateSequencingFromGraph(
     }
   }
 
-  // Create items with precondition rules
+  // Create items with objectives and precondition rules
   for (const [nodeId, node] of graph.nodes) {
     const itemSeq: ItemSequencing = {
       controlMode: {
         choice: true,
         flow: false
-      }
+      },
+      objectives: []
     };
 
-    // Find all incoming edges to this node (preconditions)
+    // Add a primary objective for this SCO
+    itemSeq.objectives!.push({
+      objectiveID: `primary_${nodeId}`,
+      isPrimary: true
+    });
+
+    // For source nodes: add objectives that WRITE to global objectives for each outgoing choice
+    // These objectives will be satisfied when the learner completes this SCO
+    for (const choice of node.choices) {
+      const choiceKey = `${nodeId}_to_${choice.targetId}`;
+      const objId = choiceToObjectiveMap.get(choiceKey);
+      if (objId) {
+        // Add a local objective that maps to the global objective
+        // This allows the source SCO to write satisfaction status to the global objective
+        itemSeq.objectives!.push({
+          objectiveID: `local_${objId}`,
+          isPrimary: false,
+          mapInfo: [{
+            targetObjectiveID: objId,
+            readSatisfiedStatus: false,
+            writeSatisfiedStatus: true,
+            readNormalizedMeasure: false,
+            writeNormalizedMeasure: false
+          }]
+        });
+      }
+    }
+
+    // For target nodes: find all incoming edges (preconditions)
+    // An incoming edge is when another node has a choice that targets this node's file
     const incomingObjectives: string[] = [];
     for (const [sourceId, sourceNode] of graph.nodes) {
       for (const choice of sourceNode.choices) {
+        // choice.targetId contains the filename (e.g., 'middle.md')
+        // node.file also contains the filename
+        // They match when this node is the target of the choice
         if (choice.targetId === node.file) {
-          const choiceKey = `${sourceId}_to_${node.file}`;
+          // Use the same key format as when building the map
+          const choiceKey = `${sourceId}_to_${choice.targetId}`;
           const objId = choiceToObjectiveMap.get(choiceKey);
           if (objId) {
             incomingObjectives.push(objId);
+            
+            // Add a local objective that READs from the global objective
+            // This allows the target SCO to check if the choice was made
+            const localReadObjId = `read_${objId}`;
+            // Only add if not already present
+            if (!itemSeq.objectives!.some(o => o.objectiveID === localReadObjId)) {
+              itemSeq.objectives!.push({
+                objectiveID: localReadObjId,
+                isPrimary: false,
+                mapInfo: [{
+                  targetObjectiveID: objId,
+                  readSatisfiedStatus: true,
+                  writeSatisfiedStatus: false,
+                  readNormalizedMeasure: false,
+                  writeNormalizedMeasure: false
+                }]
+              });
+            }
           }
         }
       }
     }
 
     // Add preconditions for non-start nodes
+    // Logic: Disable this item if NONE of the incoming paths were taken
+    // Implementation: condition="satisfied" + operator="not" for each incoming objective
+    // with conditionCombination="all" means: if (NOT obj1.satisfied AND NOT obj2.satisfied) then disable
+    // This effectively means: enable if ANY incoming choice was made
     if (nodeId !== graph.start && incomingObjectives.length > 0) {
       itemSeq.preconditions = [{
         ruleConditions: incomingObjectives.map(objId => ({
           condition: 'satisfied' as const,
-          objectiveID: objId
+          objectiveID: `read_${objId}`,
+          operator: 'not' as const
         })),
-        conditionCombination: 'any' as const, // Any incoming path satisfies
+        conditionCombination: 'all' as const,
         ruleAction: 'disabled' as const
       }];
     }

@@ -146,10 +146,29 @@
                 const choiceKey = currentScene + '_to_' + target;
                 const objectiveId = 'obj_{{lesson.module}}_' + choiceKey.replace(/[^a-zA-Z0-9]/g, '_');
                 
-                // Set the objective at index 0 (or find next available index)
-                SchormRuntime.setValue('cmi.objectives.0.id', objectiveId);
-                SchormRuntime.setValue('cmi.objectives.0.success_status', 'passed');
-                SchormRuntime.setValue('cmi.objectives.0.completion_status', 'completed');
+                // Find the next available objective index
+                // Check if this objective already exists, otherwise use the next available slot
+                let objectiveIndex = -1;
+                const objectivesCount = parseInt(SchormRuntime.getValue('cmi.objectives._count') || '0', 10);
+                
+                // Check if the objective already exists
+                for (let i = 0; i < objectivesCount; i++) {
+                    const existingId = SchormRuntime.getValue('cmi.objectives.' + i + '.id');
+                    if (existingId === objectiveId) {
+                        objectiveIndex = i;
+                        break;
+                    }
+                }
+                
+                // If not found, use the next available index
+                if (objectiveIndex === -1) {
+                    objectiveIndex = objectivesCount;
+                }
+                
+                // Set the objective at the found/new index
+                SchormRuntime.setValue('cmi.objectives.' + objectiveIndex + '.id', objectiveId);
+                SchormRuntime.setValue('cmi.objectives.' + objectiveIndex + '.success_status', 'passed');
+                SchormRuntime.setValue('cmi.objectives.' + objectiveIndex + '.completion_status', 'completed');
                 
                 // Save choice in suspend data for debugging/tracking
                 try {

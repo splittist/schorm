@@ -455,10 +455,14 @@ You owned your mistake.
     expect(scenarioHtml).not.toContain('initializeSco()');
     expect(scenarioHtml).not.toContain('completeSco()');
     
-    // Should set objectives using index (not ID as path)
-    expect(scenarioHtml).toContain('cmi.objectives.0.id');
-    expect(scenarioHtml).toContain('cmi.objectives.0.success_status');
-    expect(scenarioHtml).toContain('cmi.objectives.0.completion_status');
+    // Should get objectives count and find next available index
+    expect(scenarioHtml).toContain('cmi.objectives._count');
+    expect(scenarioHtml).toContain('objectiveIndex');
+    
+    // Should set objectives using dynamic index variable
+    expect(scenarioHtml).toContain('cmi.objectives.\' + objectiveIndex + \'.id');
+    expect(scenarioHtml).toContain('cmi.objectives.\' + objectiveIndex + \'.success_status');
+    expect(scenarioHtml).toContain('cmi.objectives.\' + objectiveIndex + \'.completion_status');
     
     // Verify ending scene uses runtime API correctly
     const endingHtml = fs.readFileSync(path.join(projectPath, 'build', 'owning-it.html'), 'utf-8');

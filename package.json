@@ -1,6 +1,6 @@
 {
   "name": "schorm",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "A CLI-driven static-site generator for SCORM 2004 e-learning content",
   "keywords": [
     "scorm",

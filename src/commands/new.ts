@@ -9,6 +9,7 @@ import {
   addLessonToModule,
   validateQuizId,
   addQuizToModule,
+  ensureModuleExists,
   titleFromId,
 } from '../core/course-model.js';
 
@@ -40,8 +41,10 @@ function createLesson(lessonPath: string, title?: string): void {
     // Validate lesson ID format
     validateLessonId(lessonId);
 
-    // Load existing course
+    // Load existing course and check the target module exists before writing
+    // any files, so a failure doesn't leave an orphan lesson file behind
     const course = loadCourse(coursePath);
+    ensureModuleExists(course, moduleId);
 
     // Default title to capitalized lesson ID if not provided
     const lessonTitle = title || titleFromId(lessonId);
@@ -178,8 +181,10 @@ function createQuiz(quizPath: string, title?: string): void {
     // Validate quiz ID format
     validateQuizId(quizId);
 
-    // Load existing course
+    // Load existing course and check the target module exists before writing
+    // any files, so a failure doesn't leave an orphan quiz file behind
     const course = loadCourse(coursePath);
+    ensureModuleExists(course, moduleId);
 
     // Default title to capitalized quiz ID if not provided
     const quizTitle = title || titleFromId(quizId);

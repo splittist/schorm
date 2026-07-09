@@ -84,9 +84,14 @@ modules:
     expect(html).toContain('data-case-sensitive="false"');
     expect(html).toContain('data-trim-whitespace="true"');
     
-    // Verify the [[capital]] marker was replaced with an input field
-    expect(html).not.toContain('[[capital]]');
-    expect(html).toContain('The capital of France is');
+    // Verify the [[capital]] marker was replaced with an input field in the
+    // rendered question (the embedded quiz JSON still carries the raw text)
+    const renderedBody = html.replace(
+      /<script type="application\/json"[\s\S]*?<\/script>/,
+      ''
+    );
+    expect(renderedBody).not.toContain('[[capital]]');
+    expect(renderedBody).toContain('The capital of France is');
   });
 
   it('should build a course with a multi-blank fill-in question', () => {
@@ -165,10 +170,15 @@ modules:
     // Verify multiple correct answers for company
     expect(html).toContain('data-correct-answers="Netscape|||Netscape Communications"');
     
-    // Verify no [[blank]] markers remain
-    expect(html).not.toContain('[[creator]]');
-    expect(html).not.toContain('[[year]]');
-    expect(html).not.toContain('[[company]]');
+    // Verify no [[blank]] markers remain in the rendered question (the
+    // embedded quiz JSON still carries the raw text)
+    const renderedBody = html.replace(
+      /<script type="application\/json"[\s\S]*?<\/script>/,
+      ''
+    );
+    expect(renderedBody).not.toContain('[[creator]]');
+    expect(renderedBody).not.toContain('[[year]]');
+    expect(renderedBody).not.toContain('[[company]]');
   });
 
   it('should include SCORM runtime with quiz validation logic', () => {
@@ -214,8 +224,8 @@ modules:
     const jsContent = fs.readFileSync(runtimeJs, 'utf-8');
     expect(jsContent).toContain('SchormQuiz');
     expect(jsContent).toContain('checkFillBlankAnswer');
-    expect(jsContent).toContain('gradeFillBlankQuestion');
-    expect(jsContent).toContain('initQuizForm');
+    expect(jsContent).toContain('evaluateFillBlank');
+    expect(jsContent).toContain('initQuizSubmit');
   });
 
   it('should handle fill-blank questions with case sensitivity options', () => {

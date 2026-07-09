@@ -278,6 +278,8 @@ questions:
     options:
       - id: a
         text: Option A
+      - id: b
+        text: Option B
     correct: a
 `;
     
@@ -326,6 +328,8 @@ questions:
     options:
       - id: a
         text: Option A
+      - id: b
+        text: Option B
     correct: a
 `;
     

@@ -120,6 +120,43 @@
     },
 
     /**
+     * Mark the current SCO (a lesson page) as completed.
+     *
+     * If the page contains tracked media that has not finished playing,
+     * completion is deferred until SchormMedia reports all media completed.
+     *
+     * @param {string} [lessonId] - Lesson identifier (used for preview-mode logging/storage)
+     * @returns {boolean} true if completion was recorded, false if deferred or failed
+     */
+    markLessonViewed: function(lessonId) {
+      this.init();
+
+      // Defer completion until all tracked media on the page has been played
+      if (typeof SchormMedia !== 'undefined' && !SchormMedia.allMediaCompleted()) {
+        SchormMedia._pendingLessonId = lessonId || '';
+        return false;
+      }
+
+      if (this.isPreviewMode) {
+        console.log('[SCHORM Preview] Marking lesson viewed' + (lessonId ? ', lessonId="' + lessonId + '"' : ''));
+        if (lessonId) {
+          try {
+            localStorage.setItem('schorm:lesson:' + lessonId, JSON.stringify({
+              completed: true,
+              timestamp: new Date().toISOString()
+            }));
+          } catch (e) {
+            console.error('[SCHORM Preview] Failed to save lesson state to localStorage', e);
+          }
+        }
+        return true;
+      }
+
+      this.setValue('cmi.completion_status', 'completed');
+      return this.commit();
+    },
+
+    /**
      * Terminate SCORM session
      */
     terminate: function() {
@@ -712,6 +749,13 @@
         if (this.allMediaCompleted()) {
           if (SchormRuntime.isPreviewMode) {
             console.log('[SCHORM Preview] All tracked media completed');
+          }
+
+          // If lesson completion was deferred waiting on media, record it now
+          if (this._pendingLessonId !== undefined) {
+            const pendingLessonId = this._pendingLessonId;
+            delete this._pendingLessonId;
+            SchormRuntime.markLessonViewed(pendingLessonId);
           }
         }
       }

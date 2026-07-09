@@ -49,5 +49,19 @@
     {{> footer}}
     
     <script src="assets/schorm-runtime.js"></script>
+    <script>
+        // Report lesson completion to the LMS. If the lesson contains tracked
+        // media, the runtime defers completion until all media has been played.
+        (function () {
+            function markViewed() {
+                window.SchormRuntime.markLessonViewed('{{lesson.id}}');
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', markViewed);
+            } else {
+                markViewed();
+            }
+        })();
+    </script>
 </body>
 </html>

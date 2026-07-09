@@ -8,17 +8,18 @@ export const packageCommand = new Command('package')
   .description('Package the built SCORM content into a ZIP file')
   .option('--out <directory>', 'Output directory for ZIP file', 'dist')
   .option('--name <filename>', 'Custom ZIP filename (without .zip extension)')
+  .option('--source <directory>', 'Build directory to package', 'build')
   .option('--no-validate', 'Skip validation checks')
   .action(async (options) => {
     try {
       console.log('📦 Packaging SCORM content...\n');
 
-      const buildDir = path.resolve('build');
+      const buildDir = path.resolve(options.source);
       const outputDir = path.resolve(options.out);
 
-      // Step 1: Check that build/ directory exists
+      // Step 1: Check that the build directory exists
       if (!fs.existsSync(buildDir)) {
-        throw new Error('Build directory not found. Please run "schorm build" first.');
+        throw new Error(`Build directory not found: ${buildDir}. Please run "schorm build" first.`);
       }
 
       // Step 2: Validate minimal preconditions
@@ -110,30 +111,9 @@ async function createZipFile(sourceDir: string, outputPath: string): Promise<voi
 
     archive.pipe(output);
 
-    // Add imsmanifest.xml at the root
-    const manifestPath = path.join(sourceDir, 'imsmanifest.xml');
-    if (fs.existsSync(manifestPath)) {
-      archive.file(manifestPath, { name: 'imsmanifest.xml' });
-    }
-
-    // Add all HTML files at the root
-    const files = fs.readdirSync(sourceDir);
-    const htmlFiles = files.filter((f) => f.endsWith('.html'));
-    for (const htmlFile of htmlFiles) {
-      archive.file(path.join(sourceDir, htmlFile), { name: htmlFile });
-    }
-
-    // Add assets directory if it exists
-    const assetsDir = path.join(sourceDir, 'assets');
-    if (fs.existsSync(assetsDir)) {
-      archive.directory(assetsDir, 'assets');
-    }
-
-    // Add media directory if it exists
-    const mediaDir = path.join(sourceDir, 'media');
-    if (fs.existsSync(mediaDir)) {
-      archive.directory(mediaDir, 'media');
-    }
+    // Add the entire build directory so every generated artifact ships in the
+    // package (imsmanifest.xml, HTML pages, assets/, media/, and anything else)
+    archive.directory(sourceDir, false);
 
     archive.finalize();
   });

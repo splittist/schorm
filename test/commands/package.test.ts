@@ -286,6 +286,107 @@ Test lesson.
     expect(fs.existsSync(zipPath)).toBe(true);
   });
 
+  it('should package a custom build directory with --source option', () => {
+    const projectName = 'custom-source';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Initialize project
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Create a lesson
+    const lessonDir = path.join(projectPath, 'content', 'm1');
+    fs.mkdirSync(lessonDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lessonDir, 'intro.md'),
+      `---
+id: m1-intro
+title: "Introduction"
+module: m1
+---
+
+# Introduction
+Test lesson.
+`
+    );
+
+    // Update course.yml
+    const courseConfig = {
+      id: 'custom-source-course',
+      title: 'Custom Source Course',
+      modules: [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: ['m1-intro'],
+        },
+      ],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    // Build into a non-default output directory
+    execSync(`${CLI_PATH} build --output custom-build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    // Packaging the default build/ directory should fail (it doesn't exist)
+    expect(() => {
+      execSync(`${CLI_PATH} package`, {
+        cwd: projectPath,
+        stdio: 'pipe',
+      });
+    }).toThrow();
+
+    // Packaging with --source pointing at the custom directory should succeed
+    execSync(`${CLI_PATH} package --source custom-build`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    const zipPath = path.join(
+      projectPath,
+      'dist',
+      'custom-source-course-scorm2004.zip'
+    );
+    expect(fs.existsSync(zipPath)).toBe(true);
+  });
+
+  it('should include every build artifact in the ZIP, including nested files', () => {
+    const projectName = 'nested-artifacts';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Create a build directory by hand with a nested artifact
+    const buildDir = path.join(projectPath, 'build');
+    fs.mkdirSync(path.join(buildDir, 'extra'), { recursive: true });
+    fs.writeFileSync(
+      path.join(buildDir, 'imsmanifest.xml'),
+      '<?xml version="1.0"?><manifest/>'
+    );
+    fs.writeFileSync(path.join(buildDir, 'index.html'), '<html></html>');
+    fs.writeFileSync(path.join(buildDir, 'extra', 'deep.html'), '<html></html>');
+
+    execSync(`${CLI_PATH} package`, {
+      cwd: projectPath,
+      stdio: 'pipe',
+    });
+
+    const zipPath = path.join(projectPath, 'dist', 'course-scorm2004.zip');
+    expect(fs.existsSync(zipPath)).toBe(true);
+
+    // ZIP central directories store entry names verbatim, so the nested
+    // artifact's path must appear in the raw archive bytes
+    const zipContents = fs.readFileSync(zipPath).toString('latin1');
+    expect(zipContents).toContain('imsmanifest.xml');
+    expect(zipContents).toContain('index.html');
+    expect(zipContents).toContain('extra/deep.html');
+  });
+
   it('should include assets and media directories in ZIP', () => {
     const projectName = 'full-package';
     const projectPath = path.join(TEST_DIR, projectName);

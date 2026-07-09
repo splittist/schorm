@@ -67,7 +67,7 @@ Not suitable for production use yet.
 - Multi-SCO themes
 - Theming system with multiple built-in themes
 
-## **Quick Start** (once implemented)
+## **Quick Start**
 
 ### Install globally
 
@@ -184,7 +184,7 @@ Validation protects against invalid references, cycles, and missing targets:
 - `choices` and `branches` attach jump rules that either move to a target item or exit the flow when `end: true`. Optional route conditions read course variables so only one matching route will trigger.
 - Only simple behaviors are emitted: navigation mode, quiz gating that locks later items, conditional jumps or exits, and the variable mappings needed for those checks. More complex rule combinations are intentionally out of scope.
 
-See the `/examples/sequencing-dsl` sample for a complete `course.yml` that branches on `learner.role`, locks a debrief until a quiz is passed, and shows how the manifest builder interprets each field. For more ready-to-use patterns, copy from [docs/sequencing-recipes.md](docs/sequencing-recipes.md).
+For ready-to-use patterns — including complete `course.yml` samples that gate a debrief behind a quiz and route between items — copy from [docs/sequencing-recipes.md](docs/sequencing-recipes.md). Note that conditional routes reading course variables (e.g. `learner.role`) are emitted into the manifest, but the runtime does not yet provide a supported way to set those variables — treat conditional routing as experimental until it does.
 
 ## Content Authoring
 
@@ -304,7 +304,7 @@ Requirements:
 Clone the repo:
 
 ```bash
-git clone https://github.com/<your-org>/schorm.git
+git clone https://github.com/splittist/schorm.git
 cd schorm
 npm install
 ```
@@ -325,6 +325,7 @@ Useful docs:
 
 - `/docs/prd.md` — Product Requirements (draft)
 - `/docs/architecture.md` (draft)
+- `/docs/repo-review-2026-07.md` — repository review and improvement backlog
 
 If adding new commands or core functionality, start with an issue first so the design can be aligned with the overall architecture.
 

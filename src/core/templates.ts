@@ -83,9 +83,7 @@ export class TemplateEngine {
         const blank = blanksMap.get(blankId);
 
         if (blank) {
-          const correctAnswers = Array.isArray(blank.correct_answers)
-            ? blank.correct_answers
-            : [];
+          const correctAnswers = Array.isArray(blank.correct_answers) ? blank.correct_answers : [];
           const caseSensitive = blank.case_sensitive === true;
           const trimWhitespace = blank.trim_whitespace !== false; // default true
 

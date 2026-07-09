@@ -311,7 +311,15 @@ function validateQuestion(
   }
 
   // Validate prompt
-  validateRequiredField(q, 'prompt', 'string', basePath, errors, ErrorCodes.MISSING_PROMPT, questionId);
+  validateRequiredField(
+    q,
+    'prompt',
+    'string',
+    basePath,
+    errors,
+    ErrorCodes.MISSING_PROMPT,
+    questionId
+  );
 
   // Validate type-specific fields
   const questionType = q.type as QuestionType;
@@ -922,7 +930,12 @@ function validateOptions(
     const opt = option as Record<string, unknown>;
 
     // Validate option id
-    if (opt.id === undefined || opt.id === null || typeof opt.id !== 'string' || opt.id.trim() === '') {
+    if (
+      opt.id === undefined ||
+      opt.id === null ||
+      typeof opt.id !== 'string' ||
+      opt.id.trim() === ''
+    ) {
       errors.push({
         code: ErrorCodes.MISSING_OPTION_ID,
         message: 'Each option must have an id',
@@ -974,7 +987,10 @@ function validateRequiredField(
     return false;
   }
 
-  if (expectedType === 'string' && (typeof obj[field] !== 'string' || (obj[field] as string).trim() === '')) {
+  if (
+    expectedType === 'string' &&
+    (typeof obj[field] !== 'string' || (obj[field] as string).trim() === '')
+  ) {
     errors.push({
       code: errorCode,
       message: `Field "${field}" must be a non-empty string`,

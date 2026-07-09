@@ -145,7 +145,42 @@ export class PreviewServer {
   }
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
-    let filePath = path.join(this.options.directory, req.url || '/');
+    const filePath = this.resolveRequestPath(req.url || '/');
+
+    // Reject requests that resolve outside the served directory
+    if (filePath === null) {
+      res.writeHead(403, { 'Content-Type': 'text/html' });
+      res.end('<h1>403 - Forbidden</h1>');
+      return;
+    }
+
+    this.serveFile(filePath, res);
+  }
+
+  /**
+   * Resolve a request URL to a file path inside the served directory.
+   * Returns null if the URL is malformed or escapes the served directory.
+   */
+  private resolveRequestPath(url: string): string | null {
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(new URL(url, 'http://localhost').pathname);
+    } catch {
+      return null;
+    }
+
+    const root = path.resolve(this.options.directory);
+    const resolved = path.resolve(root, '.' + path.posix.normalize('/' + pathname));
+
+    if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+      return null;
+    }
+
+    return resolved;
+  }
+
+  private serveFile(requestedPath: string, res: http.ServerResponse): void {
+    let filePath = requestedPath;
 
     // Handle directory requests
     if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {

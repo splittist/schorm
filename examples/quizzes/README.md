@@ -24,9 +24,17 @@ A complete quiz with all question types combined.
 
 ## Schema Validation
 
-All quiz YAML files should validate against the JSON Schema located at:
-`schemas/quiz-schema.json`
+All quiz YAML files validate against the JSON Schema at `schemas/quiz-schema.json`
+(print it with `schorm schema quiz`). The examples carry a
+`# yaml-language-server: $schema=...` modeline so editors with the YAML
+language server validate them as you type, and the test suite validates them
+in CI.
+
+Quizzes may also set a top-level `passing_score` (0–1, default 0.8) — the
+score required to pass, reported to the LMS.
 
 ## YAML Field Names
 
-Note: The JSON schema uses snake_case for certain fields (e.g., `shuffle_options`, `correct_answers`) to match YAML conventions, while the TypeScript model uses camelCase (e.g., `shuffleOptions`, `correctAnswers`). Your loader should map between these conventions.
+All field names are snake_case (`shuffle_options`, `correct_answers`,
+`passing_score`) in the YAML files, the JSON schema, and the TypeScript model
+alike. No case mapping is needed anywhere.

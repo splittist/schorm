@@ -1,7 +1,9 @@
+# yaml-language-server: $schema=../../schemas/course-schema.json
 id: reply-all-crisis
 version: 1.0.0
 title: The Reply-All Apocalypse
-description: A scenario-based course demonstrating crisis management through email mistakes
+metadata:
+  description: A scenario-based course demonstrating crisis management through email mistakes
 
 modules:
   - id: email-scenario

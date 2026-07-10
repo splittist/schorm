@@ -101,27 +101,27 @@ and verified to stay within the served directory (403 otherwise).
   `scenario.html` sets `cmi.location`/`cmi.suspend_data`. Lessons and quizzes
   have no re-entry handling (`cmi.entry`/`cmi.exit`), and quizzes don't restore
   prior answers.
-- **`findAPI` never checks `window.opener`** (`theme-default/assets/schorm-runtime.js`).
-  LMSs that launch SCOs in a popup window won't be found; the SCO silently falls
-  into preview mode and reports nothing. Walk the opener chain as well as parents.
-- **Client-side answer keys / score integrity.** The full quiz object — including
-  `correct`, `correct_answers`, and `correct_pairs` — is embedded in the page
-  (`quiz.html` `jsonStringify`, plus `data-correct-*` attributes in partials), and
-  the client writes `cmi.score.*` directly. This is a common SCORM shortcut, but
-  it should be documented as an explicit integrity limitation: any learner can
-  read the answers from source or set an arbitrary score.
+- ~~**`findAPI` never checks `window.opener`.**~~ **Done (July 2026):** after
+  exhausting the parent chain the runtime now searches the opener's parent
+  chain (cross-origin guarded), so popup-launched SCOs find the API.
+- ~~**Client-side answer keys / score integrity.**~~ **Documented (July 2026):**
+  the limitation is now stated explicitly in `docs/runtime-behavior.md`
+  ("not suitable for high-stakes assessment"). Server-side scoring remains
+  out of scope for a static-site generator.
 
 ### Manifest correctness
 
-- **Media files are not associated with the SCO resources that use them.**
-  `src/core/manifest.ts` dumps every media file into the first (index) resource;
-  each lesson/quiz `<resource>` lists only its own HTML plus the two common asset
-  files. IMS content packaging expects a resource to enumerate its dependent
-  files (or reference a shared asset resource via `<dependency>`).
-- **`scorm_version` config is inert.** It is read, defaulted, and logged, but the
-  manifest hardcodes `schemaversion` "2004 4th Edition". Either implement the
-  other editions (and eventually SCORM 1.2 export) or reject unsupported values.
-- **No XSD validation of generated manifests** — see Testing below.
+- ~~**Media files are not associated with the SCO resources that use them.**~~
+  **Done (July 2026):** each lesson resource lists the media its content uses,
+  shared theme assets moved to a `RES-common-assets` asset resource referenced
+  from every SCO via `<dependency>`, and unreferenced media stays declared once
+  on the index resource. The gate objective's `minNormalizedMeasure` now also
+  uses the gate quiz's own `passing_score` instead of a hardcoded 0.8.
+- ~~**`scorm_version` config is inert.**~~ **Done (July 2026):** `schorm build`
+  and `schorm init` now reject values other than `2004-4th` with a clear
+  message instead of silently producing a mislabeled package. SCORM 1.2 export
+  remains a scope idea.
+- **XSD validation of generated manifests** — partially done; see Testing below.
 
 ### Determinism
 
@@ -133,10 +133,9 @@ and verified to stay within the served directory (403 otherwise).
 
 - **XSS surface with untrusted content.** Templates use triple-stache
   (`{{{question.prompt}}}`, `{{{text}}}`, `{{{lesson.content}}}`) and markdown-it
-  runs with `html: true`. Fine for trusted authors, but the README explicitly
-  targets LLM-generated content, which makes this a stored-XSS vector inside the
-  LMS. Recommend sanitizing rendered HTML (or making `html: true` opt-in) and
-  documenting the trust model.
+  runs with `html: true`. **The trust model is now documented** in
+  `docs/runtime-behavior.md` (content authors are trusted; sanitize LLM output
+  before building). Actual sanitization (or opt-in `html: true`) remains open.
 - **`scenario.html` interpolates unvalidated values into inline JS** —
   `masteryScore` comes from frontmatter and is never validated as a number, and
   scenario scene IDs are not run through `validateLessonId`. A hostile or
@@ -147,11 +146,14 @@ and verified to stay within the served directory (403 otherwise).
 
 ### Testing
 
-- **No XSD conformance testing of `imsmanifest.xml`.** Manifest assertions are
-  substring checks only; a manifest violating the IMS content-packaging or
-  sequencing schemas would pass. For a SCORM generator this is the single biggest
-  test gap — vendor the ADL/IMS XSDs and validate generated manifests in the
-  packaging tests.
+- **XSD conformance testing of `imsmanifest.xml`** — partially done (July
+  2026): `test/core/manifest-conformance.test.ts` checks well-formedness via
+  xmllint plus reference integrity (identifierref resolution, file/dependency
+  shape, single declaration per media file), and automatically upgrades to
+  full `xmllint --schema` validation when the SCORM 2004 XSDs are placed in
+  `test/fixtures/xsd/` (see its README — the schema hosts are unreachable from
+  the sandboxed dev environment, so the XSDs still need to be vendored by a
+  maintainer with network access).
 - **No coverage measurement** (`@vitest/coverage-v8` not configured), so
   untested modules are invisible. `src/core/config.ts` has zero direct coverage
   and `src/cli.ts` routing has no dedicated test.
@@ -179,34 +181,37 @@ and verified to stay within the served directory (403 otherwise).
 
 ### Documentation
 
-- **Undocumented CLI flags**: `init --title/--scorm-version/--force`,
-  `build -o/--config/--json`, `package --out/--name/--no-validate`,
-  `validate --json/--debug-validation`. Only `preview --open` is documented.
-- **`schorm.config.yml` fields are never listed anywhere** (only `scorm_version`
-  and `theme` are consumed), and course `version`/`metadata.*` support is
-  undocumented.
-- **No theme customization guide** — `docs/architecture.md` describes theme
-  structure but nothing explains creating a theme or overriding partials/runtime.
-- **`scoring: partial` is advertised but inert.** Examples and the JSON schema
-  show `scoring: mode: partial` for multiple-response/matching, but the runtime
-  is exact-match / all-or-nothing ("no partial credit in v0.3"). Mark it clearly
-  in the examples and schema until implemented.
-- **`docs/architecture.md` has model drift** — it describes `registerInitCommand()`
-  functions, `Course.scormVersion`, `Quiz.type`, and `MediaItem.alt`, none of
-  which match the code.
-- **Markdown-image media tracking is undocumented** — `![](…)` images are
-  auto-tracked as media items, and there is no `{{image}}` shortcode even though
-  the media attribute type includes `'image'`.
+**Done (July 2026)** — the documentation suite now covers the previously
+undocumented surface, written after the behavior-settling fixes so it should
+not need rewriting as remaining features land (each future feature maps to a
+single small subsection):
+
+- ~~Undocumented CLI flags~~ → `docs/cli-reference.md` (every command, flag,
+  exit code, and `--json` output shape).
+- ~~`schorm.config.yml` and course `version`/`metadata` undocumented~~ →
+  `docs/configuration-and-authoring.md`, which links to the JSON schemas as
+  the authoritative field spec instead of duplicating them.
+- ~~No theme customization guide~~ → `docs/theme-guide.md` (anatomy, template
+  contexts, and the template/runtime contracts a custom theme must keep).
+- ~~`scoring: partial` advertised but inert~~ → marked "not yet implemented"
+  in the quiz schema description, the authoring reference, and
+  `docs/runtime-behavior.md`.
+- ~~`docs/architecture.md` model drift~~ → corrected against the code
+  (command registration, Course/Quiz/MediaItem shapes, theme tree, data-model
+  element list).
+- ~~Markdown-image media tracking undocumented~~ → covered in the authoring
+  reference's media section.
 
 ### Scope ideas
 
-- Implement the planned `schorm lint`, `schorm schema`, and `schorm graph`
-  commands (the README already advertises them as planned).
-- SCORM 1.2 export — the config knob already exists.
+- Implement the planned `schorm lint` and `schorm graph` commands
+  (`schorm schema` shipped July 2026).
+- SCORM 1.2 export (the config knob now rejects it explicitly until built).
 - Partial-credit scoring for multiple-response and matching.
-- **A full end-to-end example course** (module + lesson + quiz + media). Today
-  `examples/` has only standalone quiz files and a scenario-only course; a new
-  user has no runnable "linear module" reference.
+- ~~**A full end-to-end example course.**~~ **Done (July 2026):**
+  `examples/linear-course/` — lessons with media, a mixed-type gating quiz,
+  linear sequencing, and a walkthrough README; validated against the schemas
+  and built end-to-end in the test suite.
 - Repo hygiene: CHANGELOG, CONTRIBUTING, issue/PR templates, Dependabot config,
   and release automation (`prepublishOnly` runs only `build` — a broken test
   suite can publish).
@@ -223,8 +228,9 @@ and verified to stay within the served directory (403 otherwise).
   `scenario-builder.ts` (the latter — `detectCycles` — is exported but never
   called, so scenario navigation cycles are never actually reported);
   `escapeHtml`/`escapeRegex` are re-implemented locally in `scenario-builder.ts`.
-- Hardcoded constants: passing score `0.8` duplicated between `manifest.ts` and
-  `schorm-runtime.js` (with a keep-in-sync comment); scenario pass threshold
+- Hardcoded constants: the default passing score `0.8` is still duplicated
+  between `manifest.ts` and `schorm-runtime.js` (though the manifest gate now
+  honors a quiz's explicit `passing_score`); scenario pass threshold
   `0.6` inline in `scenario.html`.
 - `validateModuleSequencing` reports author-facing warnings via `console.warn`
   instead of the structured `ValidationResult.warnings` channel, so they never

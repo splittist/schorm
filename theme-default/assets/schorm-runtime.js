@@ -265,6 +265,33 @@
         SchormRuntime.setValue('cmi.objectives.0.completion_status', 'completed');
         SchormRuntime.setValue('cmi.objectives.0.score.scaled', scaledScore.toFixed(2));
 
+        // Report per-question results via cmi.interactions.n.* so the LMS
+        // can provide item-level analytics
+        const perQuestion = result.perQuestion || [];
+        if (perQuestion.length > 0) {
+          // Append after any interactions already recorded for this SCO.
+          // Some APIs (and the preview mock) return '' for _count - treat as 0
+          let baseIndex = parseInt(SchormRuntime.getValue('cmi.interactions._count'), 10);
+          if (isNaN(baseIndex) || baseIndex < 0) {
+            baseIndex = 0;
+          }
+          const timestamp = new Date().toISOString();
+
+          for (let i = 0; i < perQuestion.length; i++) {
+            const q = perQuestion[i];
+            const prefix = 'cmi.interactions.' + (baseIndex + i) + '.';
+            SchormRuntime.setValue(prefix + 'id', q.id);
+            SchormRuntime.setValue(prefix + 'type', q.scormType || 'other');
+            SchormRuntime.setValue(prefix + 'learner_response', q.learnerResponse || '');
+            if (q.correctPattern) {
+              SchormRuntime.setValue(prefix + 'correct_responses.0.pattern', q.correctPattern);
+            }
+            SchormRuntime.setValue(prefix + 'result', q.correct ? 'correct' : 'incorrect');
+            SchormRuntime.setValue(prefix + 'weighting', String(q.maxScore));
+            SchormRuntime.setValue(prefix + 'timestamp', timestamp);
+          }
+        }
+
         SchormRuntime.commit();
       }
     },
@@ -516,6 +543,91 @@
     },
 
     /**
+     * Map a schorm question type to a SCORM 2004 interaction type
+     * @param {string} questionType - schorm question type
+     * @returns {string} SCORM cmi.interactions.n.type value
+     */
+    scormInteractionType: function(questionType) {
+      switch (questionType) {
+        case 'single-choice':
+        case 'multiple-response':
+          return 'choice';
+        case 'true-false':
+          return 'true-false';
+        case 'fill-blank':
+          return 'fill-in';
+        case 'matching':
+          return 'matching';
+        default:
+          return 'other';
+      }
+    },
+
+    /**
+     * Format the learner's answer as a SCORM 2004 learner_response string
+     * @param {Object} question - Question object from quiz model
+     * @param {*} userAnswer - User's answer for this question
+     * @returns {string} SCORM learner_response pattern
+     */
+    formatLearnerResponse: function(question, userAnswer) {
+      switch (question.type) {
+        case 'single-choice':
+          return userAnswer != null ? String(userAnswer) : '';
+        case 'true-false':
+          return String(userAnswer) === 'true' ? 'true' : 'false';
+        case 'multiple-response':
+          return Array.isArray(userAnswer) ? userAnswer.join('[,]') : '';
+        case 'fill-blank':
+          // One entry per blank, in declaration order
+          return (question.blanks || [])
+            .map(function(blank) {
+              return (userAnswer && userAnswer[blank.id]) || '';
+            })
+            .join('[,]');
+        case 'matching':
+          // source[.]target pairs, in premise order
+          return (question.premises || [])
+            .map(function(premise) {
+              return premise.id + '[.]' + ((userAnswer && userAnswer[premise.id]) || '');
+            })
+            .join('[,]');
+        default:
+          return '';
+      }
+    },
+
+    /**
+     * Format the correct answer as a SCORM 2004 correct_responses pattern
+     * @param {Object} question - Question object from quiz model
+     * @returns {string} SCORM correct_responses.0.pattern value
+     */
+    formatCorrectResponsePattern: function(question) {
+      switch (question.type) {
+        case 'single-choice':
+          return String(question.correct);
+        case 'true-false':
+          return question.correct ? 'true' : 'false';
+        case 'multiple-response':
+          return (question.correct || []).join('[,]');
+        case 'fill-blank':
+          // Simplification: report the first accepted answer per blank
+          return (question.blanks || [])
+            .map(function(blank) {
+              return (blank.correct_answers && blank.correct_answers[0]) || '';
+            })
+            .join('[,]');
+        case 'matching':
+          return (question.correct_pairs || [])
+            .map(function(pair) {
+              return pair.premise + '[.]' + pair.response;
+            })
+            .join('[,]');
+        default:
+          return '';
+      }
+    },
+
+    /**
      * Evaluate entire quiz
      * @param {Object} quizModel - Quiz object with questions
      * @param {Object} userAnswers - Map of question ID to user answer
@@ -533,9 +645,13 @@
 
         perQuestion.push({
           id: question.id,
+          type: question.type,
           correct: result.correct,
           score: result.score,
-          maxScore: result.maxScore
+          maxScore: result.maxScore,
+          scormType: this.scormInteractionType(question.type),
+          learnerResponse: this.formatLearnerResponse(question, userAnswer),
+          correctPattern: this.formatCorrectResponsePattern(question)
         });
 
         totalScore += result.score;

@@ -286,5 +286,52 @@ describe('Quiz Scoring Logic (Runtime)', () => {
     it('should use DEFAULT_PASSING_SCORE in evaluateQuiz', () => {
       expect(runtimeCode).toContain('quizModel.passing_score || this.DEFAULT_PASSING_SCORE');
     });
+
+    it('should carry interaction data on perQuestion results', () => {
+      expect(runtimeCode).toContain('scormType: this.scormInteractionType(question.type)');
+      expect(runtimeCode).toContain(
+        'learnerResponse: this.formatLearnerResponse(question, userAnswer)'
+      );
+      expect(runtimeCode).toContain('correctPattern: this.formatCorrectResponsePattern(question)');
+    });
+  });
+
+  describe('cmi.interactions Reporting', () => {
+    it('should write interaction fields in markScoComplete', () => {
+      expect(runtimeCode).toContain("SchormRuntime.setValue(prefix + 'id', q.id)");
+      expect(runtimeCode).toContain("SchormRuntime.setValue(prefix + 'type'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue(prefix + 'learner_response'");
+      expect(runtimeCode).toContain(
+        "SchormRuntime.setValue(prefix + 'correct_responses.0.pattern'"
+      );
+      expect(runtimeCode).toContain("SchormRuntime.setValue(prefix + 'result'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue(prefix + 'weighting'");
+      expect(runtimeCode).toContain("SchormRuntime.setValue(prefix + 'timestamp'");
+    });
+
+    it('should append after existing interactions using cmi.interactions._count', () => {
+      expect(runtimeCode).toContain("SchormRuntime.getValue('cmi.interactions._count')");
+      expect(runtimeCode).toContain('isNaN(baseIndex)');
+    });
+
+    it('should map every quiz type to a SCORM 2004 interaction type', () => {
+      expect(runtimeCode).toContain('scormInteractionType: function(questionType)');
+      expect(runtimeCode).toContain("return 'choice'");
+      expect(runtimeCode).toContain("return 'true-false'");
+      expect(runtimeCode).toContain("return 'fill-in'");
+      expect(runtimeCode).toContain("return 'matching'");
+    });
+
+    it('should format learner responses in SCORM pattern syntax', () => {
+      expect(runtimeCode).toContain('formatLearnerResponse: function(question, userAnswer)');
+      expect(runtimeCode).toContain('formatCorrectResponsePattern: function(question)');
+      // Multi-value separator and matching pair separator
+      expect(runtimeCode).toContain("join('[,]')");
+      expect(runtimeCode).toContain("'[.]'");
+    });
+
+    it('should mark result as correct or incorrect', () => {
+      expect(runtimeCode).toContain("q.correct ? 'correct' : 'incorrect'");
+    });
   });
 });

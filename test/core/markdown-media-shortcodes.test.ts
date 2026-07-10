@@ -298,12 +298,66 @@ Paragraph after media.
     it('should use provided ID when specified', () => {
       const md = new MarkdownIt();
       md.use(markdownMediaShortcodes);
-      
+
       const markdown = '{{audio src="test.mp3" id="my-custom-id"}}';
       const tokens = md.parse(markdown, {});
       const mediaItems = extractMediaFromTokens(tokens);
-      
+
       expect(mediaItems[0].id).toBe('my-custom-id');
+    });
+
+    it('should generate deterministic IDs: same document yields same IDs on every parse', () => {
+      const markdown = `
+{{audio src="media/m1/intro.mp3"}}
+
+Some text with an image: ![alt text](media/m1/photo.png)
+
+{{video src="media/m1/demo.mp4"}}
+{{audio src="media/m1/intro.mp3"}}
+`;
+
+      const parseIds = () => {
+        const md = new MarkdownIt();
+        md.use(markdownMediaShortcodes);
+        const tokens = md.parse(markdown, {});
+        return extractMediaFromTokens(tokens).map((m) => m.id);
+      };
+
+      const first = parseIds();
+      const second = parseIds();
+
+      expect(first).toEqual(second);
+      // No wall-clock component: the ID is shortcode-filename-index
+      expect(first).toContain('audio-intro-0');
+      expect(first).toContain('video-demo-1');
+      expect(first).toContain('image-photo-0');
+    });
+
+    it('should keep repeated identical shortcodes unique within a document', () => {
+      const md = new MarkdownIt();
+      md.use(markdownMediaShortcodes);
+
+      const markdown = `
+{{audio src="same.mp3"}}
+{{audio src="same.mp3"}}
+`;
+      const tokens = md.parse(markdown, {});
+      const ids = extractMediaFromTokens(tokens).map((m) => m.id);
+
+      expect(ids).toHaveLength(2);
+      expect(ids[0]).not.toBe(ids[1]);
+      expect(ids).toEqual(['audio-same-0', 'audio-same-1']);
+    });
+
+    it('should restart the occurrence index for each document', () => {
+      const md = new MarkdownIt();
+      md.use(markdownMediaShortcodes);
+
+      const idsA = extractMediaFromTokens(md.parse('{{audio src="a.mp3"}}', {})).map((m) => m.id);
+      const idsB = extractMediaFromTokens(md.parse('{{audio src="b.mp3"}}', {})).map((m) => m.id);
+
+      expect(idsA).toEqual(['audio-a-0']);
+      expect(idsB).toEqual(['audio-b-0']);
     });
   });
 

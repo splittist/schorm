@@ -22,21 +22,49 @@
     isPreviewMode: false,
 
     /**
-     * Find the SCORM API object by searching the window hierarchy
+     * Find the SCORM API object by searching the window hierarchy.
+     * Searches the parent chain first, then the opener's parent chain -
+     * LMSs may launch SCOs in a popup window, where the API lives on the
+     * opener rather than a parent frame.
      */
     findAPI: function(win) {
+      const api = this.scanParentsForAPI(win);
+      if (api != null) {
+        return api;
+      }
+
+      try {
+        if (win.opener != null && win.opener !== win) {
+          return this.scanParentsForAPI(win.opener);
+        }
+      } catch (e) {
+        // Cross-origin opener - not searchable
+      }
+
+      return null;
+    },
+
+    /**
+     * Walk a window's parent chain looking for the SCORM 2004 API
+     */
+    scanParentsForAPI: function(win) {
       let findAttempts = 0;
       const maxAttempts = 500;
-      
-      while (win.API_1484_11 == null && win.parent != null && win.parent != win) {
-        findAttempts++;
-        if (findAttempts > maxAttempts) {
-          return null;
+
+      try {
+        while (win.API_1484_11 == null && win.parent != null && win.parent != win) {
+          findAttempts++;
+          if (findAttempts > maxAttempts) {
+            return null;
+          }
+          win = win.parent;
         }
-        win = win.parent;
+
+        return win.API_1484_11;
+      } catch (e) {
+        // Cross-origin frame boundary - stop searching this chain
+        return null;
       }
-      
-      return win.API_1484_11;
     },
 
     /**

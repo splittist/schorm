@@ -100,6 +100,12 @@ describe('Quiz Scoring Logic (Runtime)', () => {
       expect(runtimeCode).toContain('cmi.completion_status');
     });
 
+    it('should search the opener chain for popup-launched SCOs', () => {
+      expect(runtimeCode).toContain('scanParentsForAPI: function(win)');
+      expect(runtimeCode).toContain('win.opener != null');
+      expect(runtimeCode).toContain('this.scanParentsForAPI(win.opener)');
+    });
+
     it('should set passed/failed based on result', () => {
       expect(runtimeCode).toContain('passed');
       expect(runtimeCode).toContain('failed');

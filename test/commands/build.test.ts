@@ -79,6 +79,10 @@ This is the introduction lesson.
     // Verify HTML file was created
     expect(fs.existsSync(path.join(buildDir, 'm1-intro.html'))).toBe(true);
 
+    // Verify the lesson reports completion to the LMS
+    const lessonHtml = fs.readFileSync(path.join(buildDir, 'm1-intro.html'), 'utf-8');
+    expect(lessonHtml).toContain("markLessonViewed('m1-intro')");
+
     // Verify manifest was created
     const manifestPath = path.join(buildDir, 'imsmanifest.xml');
     expect(fs.existsSync(manifestPath)).toBe(true);
@@ -565,9 +569,65 @@ Test lesson with nested media.
       stdio: 'pipe',
     });
 
-    // Create a lesson
-    const lessonDir = path.join(projectPath, 'content', 'm1');
-    fs.mkdirSync(lessonDir, { recursive: true });
+    // Create two modules with three lessons total
+    const m1Dir = path.join(projectPath, 'content', 'm1');
+    const m2Dir = path.join(projectPath, 'content', 'm2');
+    fs.mkdirSync(m1Dir, { recursive: true });
+    fs.mkdirSync(m2Dir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(m1Dir, 'lesson1.md'),
+      `---
+id: m1-lesson1
+title: "Lesson 1"
+module: m1
+---
+
+# Lesson 1
+Content.
+`
+    );
+    fs.writeFileSync(
+      path.join(m1Dir, 'lesson2.md'),
+      `---
+id: m1-lesson2
+title: "Lesson 2"
+module: m1
+---
+
+# Lesson 2
+Content.
+`
+    );
+    fs.writeFileSync(
+      path.join(m2Dir, 'lesson1.md'),
+      `---
+id: m2-lesson1
+title: "Lesson 3"
+module: m2
+---
+
+# Lesson 3
+Content.
+`
+    );
+
+    const courseConfig = {
+      id: projectName,
+      title: projectName,
+      modules: [
+        {
+          id: 'm1',
+          title: 'Module 1',
+          items: ['m1-lesson1', 'm1-lesson2'],
+        },
+        {
+          id: 'm2',
+          title: 'Module 2',
+          items: ['m2-lesson1'],
+        },
+      ],
+    };
     fs.writeFileSync(
       path.join(projectPath, 'course.yml'),
       yaml.stringify(courseConfig)
@@ -980,12 +1040,10 @@ questions:
     // Verify quiz is marked as multiple-response type
     expect(quizHtml).toContain('data-question-type="multiple-response"');
     
-    // Verify correct answers are marked properly
-    // For q1, options 'a' (2) and 'c' (5) should be marked as correct
-    expect(quizHtml).toMatch(/value="a"[^>]*data-correct="true"/);
-    expect(quizHtml).toMatch(/value="c"[^>]*data-correct="true"/);
-    expect(quizHtml).toMatch(/value="b"[^>]*data-correct="false"/);
-    expect(quizHtml).toMatch(/value="d"[^>]*data-correct="false"/);
+    // Correct answers live in the embedded quiz JSON consumed by the scoring
+    // runtime; option inputs deliberately carry no data-correct attributes
+    expect(quizHtml).toContain('"correct":["a","c"]');
+    expect(quizHtml).not.toContain('data-correct=');
   });
 
   it('should build a course with a true-false quiz', () => {
@@ -1079,17 +1137,16 @@ questions:
     expect(quizHtml).toContain('<span>True</span>');
     expect(quizHtml).toContain('<span>False</span>');
     
-    // Verify correct answers are marked properly for each question
-    // For q1 (correct: true), the "true" radio button should be marked correct
-    expect(quizHtml).toMatch(/name="question-q1"[^>]*value="true"[^>]*data-correct="true"/);
-    expect(quizHtml).toMatch(/name="question-q1"[^>]*value="false"[^>]*data-correct="false"/);
-    
-    // For q2 (correct: false), the "false" radio button should be marked correct
-    expect(quizHtml).toMatch(/name="question-q2"[^>]*value="true"[^>]*data-correct="false"/);
-    expect(quizHtml).toMatch(/name="question-q2"[^>]*value="false"[^>]*data-correct="true"/);
-    
-    // For q3 (correct: true), the "true" radio button should be marked correct
-    expect(quizHtml).toMatch(/name="question-q3"[^>]*value="true"[^>]*data-correct="true"/);
-    expect(quizHtml).toMatch(/name="question-q3"[^>]*value="false"[^>]*data-correct="false"/);
+    // Verify both radio inputs exist for each question
+    expect(quizHtml).toMatch(/name="question-q1"[^>]*value="true"/);
+    expect(quizHtml).toMatch(/name="question-q1"[^>]*value="false"/);
+    expect(quizHtml).toMatch(/name="question-q2"[^>]*value="true"/);
+    expect(quizHtml).toMatch(/name="question-q3"[^>]*value="false"/);
+
+    // Correct answers live in the embedded quiz JSON consumed by the scoring
+    // runtime; option inputs deliberately carry no data-correct attributes
+    expect(quizHtml).toMatch(/"id":"q1"[^{}]*"correct":true/);
+    expect(quizHtml).toMatch(/"id":"q2"[^{}]*"correct":false/);
+    expect(quizHtml).toMatch(/"id":"q3"[^{}]*"correct":true/);
   });
 });

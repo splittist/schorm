@@ -14,21 +14,20 @@ export interface MediaAttributes {
 }
 
 /**
- * Generate a unique ID for a media item
- * Uses a counter to ensure uniqueness even for items with the same filename
+ * Generate a deterministic ID for a media item.
+ *
+ * The ID is derived purely from the shortcode, the source filename, and the
+ * item's occurrence index within the document, so the same document produces
+ * the same IDs on every build (the IDs ship in the built HTML as data-id
+ * attributes). The index keeps repeated identical sources unique.
  */
-let mediaIdCounter = 0;
-
-function generateMediaId(shortcode: string, src: string): string {
-  // Create a simple ID from the shortcode and source filename
+function generateMediaId(shortcode: string, src: string, index: number): string {
   const filename =
     src
       .split('/')
       .pop()
       ?.replace(/\.[^.]+$/, '') || 'media';
-  const timestamp = Date.now().toString(36);
-  const counter = (mediaIdCounter++).toString(36);
-  return `${shortcode}-${filename}-${timestamp}${counter}`;
+  return `${shortcode}-${filename}-${index}`;
 }
 
 /**
@@ -60,9 +59,12 @@ function validateAttributes(shortcode: string, attrs: Record<string, string>): v
 }
 
 /**
- * Parse a media shortcode and return its attributes
+ * Parse a media shortcode and return its attributes.
+ * When no explicit id attribute is given, one is generated deterministically
+ * from the shortcode, filename, and the document-scoped occurrence index
+ * supplied by the caller.
  */
-function parseShortcode(content: string): MediaAttributes {
+function parseShortcode(content: string, nextMediaIndex: () => number): MediaAttributes {
   // Extract shortcode type (audio or video)
   const typeMatch = content.match(/^(audio|video)\s/);
   if (!typeMatch) {
@@ -79,7 +81,7 @@ function parseShortcode(content: string): MediaAttributes {
   validateAttributes(shortcode, attrs);
 
   // Generate ID if not provided
-  const id = attrs.id || generateMediaId(shortcode, attrs.src);
+  const id = attrs.id || generateMediaId(shortcode, attrs.src, nextMediaIndex());
 
   return {
     shortcode,
@@ -87,6 +89,18 @@ function parseShortcode(content: string): MediaAttributes {
     title: attrs.title,
     poster: attrs.poster,
     id,
+  };
+}
+
+/**
+ * Return the next document-scoped media occurrence index, stored on the
+ * markdown-it env so each parse pass starts from zero
+ */
+function nextMediaIndexFromEnv(env: Record<string, unknown>): () => number {
+  return () => {
+    const current = typeof env._schormMediaIndex === 'number' ? env._schormMediaIndex : 0;
+    env._schormMediaIndex = current + 1;
+    return current;
   };
 }
 
@@ -140,7 +154,7 @@ function mediaShortcodeRule(state: any, silent: boolean): boolean {
   // Parse the shortcode
   let mediaAttrs: MediaAttributes;
   try {
-    mediaAttrs = parseShortcode(content);
+    mediaAttrs = parseShortcode(content, nextMediaIndexFromEnv(state.env || {}));
   } catch (error) {
     // If parsing fails, return false and let it be treated as regular text
     console.error('Error parsing shortcode:', error);
@@ -185,6 +199,8 @@ export function markdownMediaShortcodes(md: MarkdownIt): void {
  */
 export function extractMediaFromTokens(tokens: any[]): MediaAttributes[] {
   const mediaItems: MediaAttributes[] = [];
+  // Document-scoped occurrence index so image IDs are deterministic per parse
+  let imageIndex = 0;
 
   function scanTokens(tokenList: any[]): void {
     for (const token of tokenList) {
@@ -201,7 +217,7 @@ export function extractMediaFromTokens(tokens: any[]): MediaAttributes[] {
             shortcode: 'image',
             src,
             title: alt,
-            id: generateMediaId('image', src),
+            id: generateMediaId('image', src, imageIndex++),
           });
         }
       }

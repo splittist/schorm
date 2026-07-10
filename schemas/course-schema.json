@@ -1,0 +1,250 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/splittist/schorm/main/schemas/course-schema.json",
+  "title": "schorm Course (course.yml)",
+  "description": "The course.yml file at a schorm project root: course metadata plus the ordered list of modules and their items. Rules the schema cannot express, which generated courses MUST still follow: (1) every entry in a module's 'items' must be the id of a lesson markdown file (content/<module-id>/*.md frontmatter 'id') or a quiz YAML file (quizzes/**.yml 'id'); (2) 'sequencing.gate.quiz' must be one of that module's items; (3) branch/choice 'start', 'from' and route 'to' values must reference that module's items; (4) a branch's 'choices' entries must reference declared choice ids; (5) branch and choice ids must be unique within the module; (6) conditional routes must not form cycles (e.g. a -> b -> a is rejected).",
+  "type": "object",
+  "required": ["id", "title"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique course identifier: letters, digits, hyphens and underscores only. Used in the SCORM manifest and the default package filename."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Human-readable course title, shown in the LMS and on every page."
+    },
+    "version": {
+      "type": "string",
+      "description": "Optional course version string (e.g. \"1.0.0\"). Informational."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional course metadata. NOTE: 'description' must live here, not at the top level of course.yml - a top-level 'description' key is ignored.",
+      "properties": {
+        "author": { "type": "string", "description": "Course author." },
+        "description": {
+          "type": "string",
+          "description": "Course description, shown on the generated index page."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Estimated course duration in minutes. Informational."
+        }
+      },
+      "additionalProperties": true
+    },
+    "modules": {
+      "type": "array",
+      "description": "The course modules, in display order.",
+      "items": { "$ref": "#/$defs/module" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "module": {
+      "type": "object",
+      "required": ["id", "title", "items"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Module identifier, unique within the course. Lesson files for this module live in content/<module-id>/ and quizzes in quizzes/<module-id>/ (or quizzes/)."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Human-readable module title."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Ordered ids of the lessons and quizzes in this module. Each id MUST match the 'id' in a lesson's frontmatter or a quiz file. In scenario mode this list is ignored and auto-generated from the scene files."
+        },
+        "sequencing": { "$ref": "#/$defs/moduleSequencing" }
+      },
+      "additionalProperties": true
+    },
+
+    "moduleSequencing": {
+      "type": "object",
+      "description": "Optional navigation and branching rules for the module, converted into SCORM 2004 sequencing in the manifest.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["linear", "free", "scenario"],
+          "default": "free",
+          "description": "Navigation mode. 'linear' forces chronological order, 'free' (default) allows any order, 'scenario' builds a choose-your-own-adventure graph from linked markdown scene files (requires 'scenario.start'; 'items', 'branches' and 'choices' are then ignored and auto-generated)."
+        },
+        "gate": {
+          "type": "object",
+          "required": ["quiz"],
+          "properties": {
+            "quiz": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Id of a quiz in this module's 'items'. Items after the gate stay disabled in the LMS until this quiz is passed."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Lock later items until a quiz is passed."
+        },
+        "branches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/branchDefinition" },
+          "description": "Named entry points into the navigation graph. EXPERIMENTAL together with 'choices': conditional routes read course variables that the current runtime provides no supported way to set."
+        },
+        "choices": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/branchChoice" },
+          "description": "Conditional jump rules between items. EXPERIMENTAL: see 'branches'."
+        },
+        "scenario": {
+          "type": "object",
+          "required": ["start"],
+          "properties": {
+            "start": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Filename of the first scene markdown file (relative to the module's content directory), e.g. \"start.md\"."
+            },
+            "contentDir": {
+              "type": "string",
+              "default": "content",
+              "description": "Base content directory. Scene files are read from <contentDir>/<module-id>/."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Scenario-mode configuration. Required when mode is 'scenario'."
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "branchDefinition": {
+      "type": "object",
+      "required": ["id", "start"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Branch identifier, unique within the module."
+        },
+        "start": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of the item where this branch begins. MUST be one of the module's 'items'."
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ids of choices (from the module's 'choices' array) reachable on this branch."
+        },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "branchChoice": {
+      "type": "object",
+      "required": ["id", "from", "routes"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Choice identifier, unique within the module."
+        },
+        "from": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of the item where this choice is presented. MUST be one of the module's 'items'."
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/branchRoute" },
+          "description": "The possible destinations. Routes with conditions are evaluated in order; at most one should match."
+        },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "branchRoute": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of the destination item. MUST be one of the module's 'items'. Required unless 'end' is true."
+        },
+        "end": {
+          "type": "boolean",
+          "description": "When true, taking this route exits the flow instead of jumping to another item. Either 'to' or 'end: true' must be present."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label for this route."
+        },
+        "condition": { "$ref": "#/$defs/branchCondition" },
+        "conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/branchCondition" },
+          "description": "Multiple conditions (all must hold)."
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        { "required": ["to"] },
+        { "properties": { "end": { "const": true } }, "required": ["end"] }
+      ]
+    },
+
+    "branchCondition": {
+      "type": "object",
+      "required": ["variable"],
+      "properties": {
+        "variable": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the course variable to compare (e.g. \"learner.role\"). EXPERIMENTAL: the current runtime provides no supported way to set course variables."
+        },
+        "equals": { "$ref": "#/$defs/scalar" },
+        "notEquals": { "$ref": "#/$defs/scalar" },
+        "in": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scalar" }
+        },
+        "notIn": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scalar" }
+        }
+      },
+      "additionalProperties": false,
+      "description": "A comparison against a course variable. At least one of 'equals', 'notEquals', 'in' or 'notIn' must be present.",
+      "anyOf": [
+        { "required": ["equals"] },
+        { "required": ["notEquals"] },
+        { "required": ["in"] },
+        { "required": ["notIn"] }
+      ]
+    },
+
+    "scalar": {
+      "description": "A string, number or boolean value.",
+      "type": ["string", "number", "boolean"]
+    }
+  }
+}

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../schemas/quiz-schema.json
 id: matching-quiz
 module: web-technologies
 title: Web Technologies Matching Quiz

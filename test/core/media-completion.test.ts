@@ -198,6 +198,25 @@ describe('Media Completion Tracking (Runtime)', () => {
       expect(runtimeCode).toContain('return false');
     });
   });
+
+  describe('Lesson Completion (markLessonViewed)', () => {
+    it('should define markLessonViewed on SchormRuntime', () => {
+      expect(runtimeCode).toContain('markLessonViewed: function(lessonId)');
+    });
+
+    it('should set cmi.completion_status to completed', () => {
+      expect(runtimeCode).toContain("this.setValue('cmi.completion_status', 'completed')");
+    });
+
+    it('should defer lesson completion until all tracked media is completed', () => {
+      expect(runtimeCode).toContain('!SchormMedia.allMediaCompleted()');
+      expect(runtimeCode).toContain('SchormMedia._pendingLessonId = lessonId');
+    });
+
+    it('should record deferred lesson completion when media finishes', () => {
+      expect(runtimeCode).toContain('SchormRuntime.markLessonViewed(pendingLessonId)');
+    });
+  });
 });
 
 describe('Media Block Template', () => {

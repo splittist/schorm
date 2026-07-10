@@ -395,6 +395,9 @@ describe('schorm new lesson command', () => {
         stdio: 'pipe',
       });
     }).toThrow(/Module "m1" not found/);
+
+    // The failed command must not leave an orphan lesson file behind
+    expect(fs.existsSync(path.join(projectPath, 'content', 'm1', 'intro.md'))).toBe(false);
   });
 
   it('should fail when missing slash in path', () => {
@@ -709,6 +712,9 @@ describe('schorm new quiz command', () => {
         stdio: 'pipe',
       });
     }).toThrow(/Module "m1" not found/);
+
+    // The failed command must not leave an orphan quiz file behind
+    expect(fs.existsSync(path.join(projectPath, 'quizzes', 'm1', 'checkpoint.yml'))).toBe(false);
   });
 
   it('should fail when missing slash in path', () => {

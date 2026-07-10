@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../schemas/quiz-schema.json
 id: true-false-quiz
 module: programming-fundamentals
 title: Programming Concepts - True or False

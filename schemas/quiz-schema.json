@@ -1,24 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/splittist/schorm/main/schemas/quiz-schema.json",
   "title": "schorm Quiz",
+  "description": "A schorm quiz file (YAML, stored as quizzes/<quiz-id>.yml or quizzes/<module-id>/<quiz-id>.yml). All property names are snake_case. Rules the schema cannot express, which generated quizzes MUST still follow: (1) question ids must be unique within the quiz; (2) option ids must be unique within a question; (3) answer references ('correct', 'correct_pairs') must point at ids that exist in the same question; (4) all ids and titles must contain at least one non-whitespace character.",
   "type": "object",
   "required": ["id", "module", "title", "questions"],
   "properties": {
     "id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Unique quiz identifier. Used as the SCO id and output filename (<id>.html). Must be non-empty after trimming; prefer lowercase letters, digits, hyphens and underscores."
     },
     "module": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Id of the module this quiz belongs to. Must match a module id declared in course.yml, and the quiz id must be listed in that module's 'items' array."
     },
     "title": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Human-readable quiz title, shown in the LMS and on the quiz page."
+    },
+    "passing_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.8,
+      "description": "Score required to pass, on a 0-1 scale (e.g. 0.7 = 70%). Defaults to 0.8 when omitted. Reported to the LMS as SCORM 2004 success_status and used for quiz-gated sequencing."
     },
     "questions": {
       "type": "array",
       "minItems": 1,
+      "description": "The quiz questions, in display order. Each question's 'id' must be unique within this quiz.",
       "items": {
         "oneOf": [
           { "$ref": "#/$defs/singleChoiceQuestion" },
@@ -37,25 +53,33 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Question identifier, unique within the quiz. Reported to the LMS as the SCORM interaction id."
         },
         "type": {
-          "type": "string"
+          "type": "string",
+          "description": "Question type discriminator: one of single-choice, multiple-response, true-false, fill-blank, matching."
         },
         "prompt": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "The question text shown to the learner. Markdown-capable."
         },
         "points": {
           "type": "number",
-          "minimum": 0
+          "minimum": 0,
+          "default": 1,
+          "description": "Points this question contributes to the quiz score. Defaults to 1."
         },
         "feedback": {
           "$ref": "#/$defs/globalFeedback"
         },
         "tags": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "type": "string" },
+          "description": "Free-form tags for organizing questions. Not shown to learners."
         }
       },
       "additionalProperties": true
@@ -63,9 +87,10 @@
 
     "globalFeedback": {
       "type": "object",
+      "description": "Feedback shown after submission, depending on whether the learner answered correctly.",
       "properties": {
-        "correct": { "type": "string" },
-        "incorrect": { "type": "string" }
+        "correct": { "type": "string", "description": "Shown when the answer is correct." },
+        "incorrect": { "type": "string", "description": "Shown when the answer is incorrect." }
       },
       "additionalProperties": false
     },
@@ -74,22 +99,37 @@
       "type": "object",
       "required": ["id", "text"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "text": { "type": "string", "minLength": 1 },
-        "feedback": { "type": "string" }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S",
+          "description": "Option identifier, unique within the question (e.g. 'a', 'b', 'c'). Referenced by the question's 'correct' field."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Option text shown to the learner. Markdown-capable."
+        },
+        "feedback": {
+          "type": "string",
+          "description": "Optional feedback specific to selecting this option."
+        }
       },
       "additionalProperties": false
     },
 
     "scoringConfig": {
       "type": "object",
+      "description": "Declarative scoring configuration. NOTE: the current (v0.3) runtime ignores this block - multiple-response and matching questions are always scored all-or-nothing, and only fill-blank questions award partial credit (per correct blank). Do not rely on 'partial' semantics until a future release implements them.",
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["all-or-nothing", "partial"]
+          "enum": ["all-or-nothing", "partial"],
+          "description": "Intended scoring mode. Currently only 'all-or-nothing' behavior is implemented for choice and matching questions."
         },
         "partial": {
           "type": "object",
+          "description": "Parameters for partial-credit scoring. Currently not implemented by the runtime.",
           "properties": {
             "perCorrect": { "type": "number" },
             "penaltyPerIncorrect": { "type": "number" },
@@ -102,6 +142,7 @@
     },
 
     "singleChoiceQuestion": {
+      "description": "Multiple-choice question with exactly one correct option, rendered as radio buttons.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
@@ -113,14 +154,17 @@
             "options": {
               "type": "array",
               "minItems": 2,
-              "items": { "$ref": "#/$defs/option" }
+              "items": { "$ref": "#/$defs/option" },
+              "description": "At least two options. Option ids must be unique within the question."
             },
             "correct": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "The id of the correct option. MUST match the 'id' of exactly one entry in 'options'."
             },
             "shuffle_options": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "When true, options are displayed in random order."
             },
             "scoring": {
               "$ref": "#/$defs/scoringConfig"
@@ -133,6 +177,7 @@
     },
 
     "multipleResponseQuestion": {
+      "description": "Select-all-that-apply question, rendered as checkboxes. Scored all-or-nothing: the learner must select exactly the correct set.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
@@ -144,7 +189,8 @@
             "options": {
               "type": "array",
               "minItems": 2,
-              "items": { "$ref": "#/$defs/option" }
+              "items": { "$ref": "#/$defs/option" },
+              "description": "At least two options. Option ids must be unique within the question."
             },
             "correct": {
               "type": "array",
@@ -152,10 +198,12 @@
               "items": {
                 "type": "string",
                 "minLength": 1
-              }
+              },
+              "description": "Ids of all correct options. Every entry MUST match the 'id' of an entry in 'options'."
             },
             "shuffle_options": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "When true, options are displayed in random order."
             },
             "scoring": {
               "$ref": "#/$defs/scoringConfig"
@@ -168,6 +216,7 @@
     },
 
     "trueFalseQuestion": {
+      "description": "True/False question, rendered as two radio buttons.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
@@ -177,7 +226,8 @@
           "properties": {
             "type": { "const": "true-false" },
             "correct": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Whether the statement in 'prompt' is true."
             }
           },
           "required": ["type", "correct"],
@@ -187,6 +237,7 @@
     },
 
     "fillBlankQuestion": {
+      "description": "Fill-in-the-blank question. The 'text' contains [[blank_id]] markers that are replaced with input fields; each marker needs a matching entry in 'blanks'. Awards partial credit per correct blank.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
@@ -197,12 +248,14 @@
             "type": { "const": "fill-blank" },
             "text": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "The sentence containing [[blank_id]] markers, e.g. \"The capital of France is [[capital]].\" Every marker MUST have a matching entry in 'blanks', and every entry in 'blanks' MUST appear as a marker here."
             },
             "blanks": {
               "type": "array",
               "minItems": 1,
-              "items": { "$ref": "#/$defs/fillBlankSpec" }
+              "items": { "$ref": "#/$defs/fillBlankSpec" },
+              "description": "One entry per [[marker]] in 'text'. Blank ids must be unique within the question."
             }
           },
           "required": ["type", "text", "blanks"],
@@ -217,18 +270,25 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "^\\w+$",
+          "description": "Blank identifier matching a [[marker]] in the question's 'text'. MUST consist only of letters, digits and underscores (hyphens are NOT recognized inside [[...]] markers)."
         },
         "correct_answers": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string" }
+          "items": { "type": "string" },
+          "description": "All accepted answers for this blank. A learner response matching any entry is correct."
         },
         "case_sensitive": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false,
+          "description": "When true, answers must match the case of a correct answer exactly."
         },
         "trim_whitespace": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": true,
+          "description": "When true, leading/trailing whitespace in the learner's answer is ignored."
         },
         "feedback": {
           "$ref": "#/$defs/globalFeedback"
@@ -238,6 +298,7 @@
     },
 
     "matchingQuestion": {
+      "description": "Matching question: each premise is paired with a response via dropdown selects. Scored all-or-nothing.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
@@ -249,17 +310,20 @@
             "premises": {
               "type": "array",
               "minItems": 1,
-              "items": { "$ref": "#/$defs/matchingPremise" }
+              "items": { "$ref": "#/$defs/matchingPremise" },
+              "description": "The left-hand items to be matched. Premise ids must be unique within the question."
             },
             "responses": {
               "type": "array",
               "minItems": 1,
-              "items": { "$ref": "#/$defs/matchingResponse" }
+              "items": { "$ref": "#/$defs/matchingResponse" },
+              "description": "The right-hand items to choose from. Response ids must be unique within the question. May contain more entries than 'premises' (distractors)."
             },
             "correct_pairs": {
               "type": "array",
               "minItems": 1,
-              "items": { "$ref": "#/$defs/matchingPair" }
+              "items": { "$ref": "#/$defs/matchingPair" },
+              "description": "The correct premise-to-response mapping. Every 'premise' MUST match an id in 'premises' and every 'response' an id in 'responses'."
             },
             "scoring": {
               "$ref": "#/$defs/scoringConfig"
@@ -275,7 +339,7 @@
       "type": "object",
       "required": ["id", "text"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "text": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
@@ -285,7 +349,7 @@
       "type": "object",
       "required": ["id", "text"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
         "text": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
@@ -295,8 +359,16 @@
       "type": "object",
       "required": ["premise", "response"],
       "properties": {
-        "premise": { "type": "string", "minLength": 1 },
-        "response": { "type": "string", "minLength": 1 }
+        "premise": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of an entry in 'premises'."
+        },
+        "response": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id of an entry in 'responses'."
+        }
       },
       "additionalProperties": false
     }

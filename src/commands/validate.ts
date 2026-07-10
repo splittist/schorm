@@ -9,7 +9,7 @@ export const validateCommand = new Command('validate')
   .action(async (options) => {
     try {
       const projectRoot = process.cwd();
-      
+
       if (options.debugValidation && !options.json) {
         console.log('🔬 Debug validation mode enabled');
         console.log(`   Project root: ${projectRoot}\n`);

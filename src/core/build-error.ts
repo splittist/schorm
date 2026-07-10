@@ -134,10 +134,10 @@ export function calculateDirectorySize(dirPath: string): number {
   }
 
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-  
+
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
-    
+
     if (entry.isDirectory()) {
       totalSize += calculateDirectorySize(fullPath);
     } else if (entry.isFile()) {
@@ -154,12 +154,12 @@ export function calculateDirectorySize(dirPath: string): number {
  */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
-  
+
   const units = ['B', 'KB', 'MB', 'GB'];
   const k = 1024;
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const value = bytes / Math.pow(k, i);
-  
+
   // Format with appropriate decimal places
   if (i === 0) {
     return `${bytes} B`;

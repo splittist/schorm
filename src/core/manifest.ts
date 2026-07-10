@@ -84,7 +84,16 @@ export interface ObjectiveMapInfo {
 export interface SequencingPrecondition {
   ruleConditions: {
     objectiveID?: string;
-    condition: 'satisfied' | 'objectiveStatusKnown' | 'objectiveMeasureKnown' | 'completed' | 'activityProgressKnown' | 'attempted' | 'attemptLimitExceeded' | 'timeLimitExceeded' | 'always';
+    condition:
+      | 'satisfied'
+      | 'objectiveStatusKnown'
+      | 'objectiveMeasureKnown'
+      | 'completed'
+      | 'activityProgressKnown'
+      | 'attempted'
+      | 'attemptLimitExceeded'
+      | 'timeLimitExceeded'
+      | 'always';
     operator?: 'not' | 'noOp';
   }[];
   ruleAction: 'skip' | 'disabled' | 'hiddenFromChoice' | 'stopForwardTraversal';
@@ -121,7 +130,10 @@ export interface Resource {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addSequencingToElement(element: any, sequencing: ItemSequencing | OrganizationSequencing): void {
+function addSequencingToElement(
+  element: any,
+  sequencing: ItemSequencing | OrganizationSequencing
+): void {
   const seqElement = element.ele('imsss:sequencing');
 
   // Add control mode if specified
@@ -143,22 +155,22 @@ function addSequencingToElement(element: any, sequencing: ItemSequencing | Organ
   const itemSeq = sequencing as ItemSequencing;
   if (itemSeq.objectives && itemSeq.objectives.length > 0) {
     const objsElement = seqElement.ele('imsss:objectives');
-    
+
     for (const obj of itemSeq.objectives) {
       const objAttrs: Record<string, string> = {
         objectiveID: obj.objectiveID,
       };
-      
+
       const tagName = obj.isPrimary ? 'imsss:primaryObjective' : 'imsss:objective';
       const objElement = objsElement.ele(tagName, objAttrs);
-      
+
       if (obj.satisfiedByMeasure !== undefined) {
         objElement.att('satisfiedByMeasure', obj.satisfiedByMeasure ? 'true' : 'false');
       }
       if (obj.minNormalizedMeasure !== undefined) {
         objElement.ele('imsss:minNormalizedMeasure').txt(obj.minNormalizedMeasure.toString()).up();
       }
-      
+
       // Add objective map info if specified
       if (obj.mapInfo && obj.mapInfo.length > 0) {
         for (const map of obj.mapInfo) {
@@ -180,10 +192,10 @@ function addSequencingToElement(element: any, sequencing: ItemSequencing | Organ
           objElement.ele('imsss:mapInfo', mapAttrs).up();
         }
       }
-      
+
       objElement.up();
     }
-    
+
     objsElement.up();
   }
 
@@ -202,7 +214,10 @@ function addSequencingToElement(element: any, sequencing: ItemSequencing | Organ
         if (precond.conditionCombination) {
           conditionsAttrs.conditionCombination = precond.conditionCombination;
         }
-        const ruleConditionsElement = preCondRuleElement.ele('imsss:ruleConditions', conditionsAttrs);
+        const ruleConditionsElement = preCondRuleElement.ele(
+          'imsss:ruleConditions',
+          conditionsAttrs
+        );
 
         for (const cond of precond.ruleConditions) {
           const condAttrs: Record<string, string> = {
@@ -232,7 +247,10 @@ function addSequencingToElement(element: any, sequencing: ItemSequencing | Organ
         if (postcond.conditionCombination) {
           conditionsAttrs.conditionCombination = postcond.conditionCombination;
         }
-        const ruleConditionsElement = postCondRuleElement.ele('imsss:ruleConditions', conditionsAttrs);
+        const ruleConditionsElement = postCondRuleElement.ele(
+          'imsss:ruleConditions',
+          conditionsAttrs
+        );
 
         for (const cond of postcond.ruleConditions) {
           const condAttrs: Record<string, string> = {
@@ -411,7 +429,9 @@ function buildItemSequencing(
 
     const sanitize = (value: string): string => value.replace(/[^a-zA-Z0-9_-]+/g, '-');
 
-    const routeConditionsToRules = (route: BranchRoute): SequencingPostcondition['ruleConditions'] => {
+    const routeConditionsToRules = (
+      route: BranchRoute
+    ): SequencingPostcondition['ruleConditions'] => {
       const conditions: BranchCondition[] = route.conditions ?? [];
       if (route.condition) {
         conditions.push(route.condition);
@@ -510,7 +530,7 @@ function buildItemSequencing(
     // If this item comes after the gate quiz, it needs a precondition to check the gate
     else if (gateQuizIndex >= 0 && itemIndex > gateQuizIndex) {
       const globalObjectiveId = `${module.id}-gate-passed`;
-      
+
       // Add objective that reads from global objective
       itemSeq.objectives = [
         {
@@ -548,7 +568,12 @@ function buildItemSequencing(
   addBranchingRules();
 
   // Only return if there's actual sequencing config
-  if (itemSeq.controlMode || itemSeq.objectives || itemSeq.preconditions || itemSeq.postconditions) {
+  if (
+    itemSeq.controlMode ||
+    itemSeq.objectives ||
+    itemSeq.preconditions ||
+    itemSeq.postconditions
+  ) {
     return itemSeq;
   }
 
@@ -558,14 +583,17 @@ function buildItemSequencing(
 /**
  * Build organization-level sequencing for a module
  */
-function buildModuleSequencing(module: Module, generatedSequencing?: any): OrganizationSequencing | undefined {
+function buildModuleSequencing(
+  module: Module,
+  generatedSequencing?: any
+): OrganizationSequencing | undefined {
   // If scenario module with generated sequencing, use that control mode
   if (generatedSequencing?.controlMode) {
     return {
-      controlMode: generatedSequencing.controlMode
+      controlMode: generatedSequencing.controlMode,
     };
   }
-  
+
   const sequencing = module.sequencing;
   if (!sequencing) {
     return undefined;
@@ -591,7 +619,10 @@ function buildModuleSequencing(module: Module, generatedSequencing?: any): Organ
     };
   }
 
-  if ((sequencing.branches && sequencing.branches.length > 0) || (sequencing.choices && sequencing.choices.length > 0)) {
+  if (
+    (sequencing.branches && sequencing.branches.length > 0) ||
+    (sequencing.choices && sequencing.choices.length > 0)
+  ) {
     orgSeq.controlMode = orgSeq.controlMode ?? {};
     if (orgSeq.controlMode.flow === undefined) {
       orgSeq.controlMode.flow = true;
@@ -626,13 +657,13 @@ export function buildManifestFromCourse(
 
     // Check if this is a scenario module with generated sequencing
     const generatedSequencing = (module as any)._generatedSequencing;
-    
+
     if (generatedSequencing) {
       // Use pre-generated items with sequencing from scenario builder
       for (const genItem of generatedSequencing.items) {
         const lesson = lessonMap.get(genItem.identifier);
         const quiz = quizMap.get(genItem.identifier);
-        
+
         if (lesson || quiz) {
           moduleItems.push({
             identifier: `ITEM-${genItem.identifier}`,
@@ -648,7 +679,7 @@ export function buildManifestFromCourse(
         const itemId = module.items[i];
         const lesson = lessonMap.get(itemId);
         const quiz = quizMap.get(itemId);
-        
+
         if (lesson) {
           const itemSequencing = buildItemSequencing(module, itemId, i, false);
           moduleItems.push({

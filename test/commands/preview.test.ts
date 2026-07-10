@@ -142,6 +142,75 @@ describe('schorm preview server', () => {
     expect(statusCode).toBe(404);
   });
 
+  it('should not serve files outside the served directory', async () => {
+    const port = 9881;
+
+    // Place a file outside the served directory (in its parent)
+    const secretPath = path.join(TEST_DIR, 'secret.txt');
+    fs.writeFileSync(secretPath, 'top secret');
+
+    server = new PreviewServer({
+      port,
+      directory: BUILD_DIR,
+      open: false,
+    });
+
+    await server.start();
+
+    // Use the options form of http.request: a URL string would be normalized
+    // by the client before it is sent, hiding the traversal from the server
+    const makeRawRequest = (rawPath: string) =>
+      new Promise<{ statusCode: number; body: string }>((resolve, reject) => {
+        const req = http.request(
+          { host: 'localhost', port, path: rawPath, method: 'GET' },
+          (res) => {
+            let data = '';
+            res.on('data', (chunk) => (data += chunk));
+            res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: data }));
+          }
+        );
+        req.on('error', reject);
+        req.end();
+      });
+
+    const traversalPaths = [
+      '/../secret.txt',
+      '/../../../../etc/passwd',
+      '/%2e%2e/secret.txt',
+      '/assets/../../secret.txt',
+    ];
+
+    for (const rawPath of traversalPaths) {
+      const response = await makeRawRequest(rawPath);
+      expect(response.statusCode, `expected ${rawPath} to be rejected`).toBeGreaterThanOrEqual(
+        400
+      );
+      expect(response.body).not.toContain('top secret');
+      expect(response.body).not.toContain('root:');
+    }
+  });
+
+  it('should serve files when the URL contains a query string', async () => {
+    const port = 9882;
+    server = new PreviewServer({
+      port,
+      directory: BUILD_DIR,
+      open: false,
+    });
+
+    await server.start();
+
+    const response = await new Promise<string>((resolve, reject) => {
+      http.get(`http://localhost:${port}/assets/styles.css?cache-bust=1`, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => resolve(data));
+      }).on('error', reject);
+    });
+
+    expect(response).toBe('body { margin: 0; }');
+  });
+
   it('should inject API before closing head tag', async () => {
     const port = 9880;
     server = new PreviewServer({

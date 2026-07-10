@@ -33,20 +33,40 @@ const MOCK_SCORM_API = `
   
   console.log('[SCHORM Preview] Injecting mock SCORM 2004 API...');
   
+  // Values written via SetValue, so GetValue can echo them back and the
+  // collection _count queries (cmi.interactions._count, cmi.objectives._count)
+  // behave like a real LMS
+  var dataModel = {};
+
+  function collectionCount(collection) {
+    var maxIndex = -1;
+    var pattern = new RegExp('^cmi\\\\.' + collection + '\\\\.(\\\\d+)\\\\.');
+    for (var key in dataModel) {
+      var match = key.match(pattern);
+      if (match) {
+        maxIndex = Math.max(maxIndex, parseInt(match[1], 10));
+      }
+    }
+    return String(maxIndex + 1);
+  }
+
   // Mock SCORM 2004 4th Edition API (API_1484_11)
   window.API_1484_11 = {
     Initialize: function(parameter) {
       console.log('[SCORM API] Initialize called with:', parameter);
       return 'true';
     },
-    
+
     Terminate: function(parameter) {
       console.log('[SCORM API] Terminate called with:', parameter);
       return 'true';
     },
-    
+
     GetValue: function(element) {
       console.log('[SCORM API] GetValue called for:', element);
+      if (element === 'cmi.interactions._count') return collectionCount('interactions');
+      if (element === 'cmi.objectives._count') return collectionCount('objectives');
+      if (element in dataModel) return dataModel[element];
       // Return empty string for most values, except specific cases
       if (element === 'cmi.completion_status') return 'unknown';
       if (element === 'cmi.success_status') return 'unknown';
@@ -54,9 +74,10 @@ const MOCK_SCORM_API = `
       if (element === 'cmi.mode') return 'normal';
       return '';
     },
-    
+
     SetValue: function(element, value) {
       console.log('[SCORM API] SetValue called:', element, '=', value);
+      dataModel[element] = String(value);
       return 'true';
     },
     
@@ -145,7 +166,42 @@ export class PreviewServer {
   }
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
-    let filePath = path.join(this.options.directory, req.url || '/');
+    const filePath = this.resolveRequestPath(req.url || '/');
+
+    // Reject requests that resolve outside the served directory
+    if (filePath === null) {
+      res.writeHead(403, { 'Content-Type': 'text/html' });
+      res.end('<h1>403 - Forbidden</h1>');
+      return;
+    }
+
+    this.serveFile(filePath, res);
+  }
+
+  /**
+   * Resolve a request URL to a file path inside the served directory.
+   * Returns null if the URL is malformed or escapes the served directory.
+   */
+  private resolveRequestPath(url: string): string | null {
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(new URL(url, 'http://localhost').pathname);
+    } catch {
+      return null;
+    }
+
+    const root = path.resolve(this.options.directory);
+    const resolved = path.resolve(root, '.' + path.posix.normalize('/' + pathname));
+
+    if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+      return null;
+    }
+
+    return resolved;
+  }
+
+  private serveFile(requestedPath: string, res: http.ServerResponse): void {
+    let filePath = requestedPath;
 
     // Handle directory requests
     if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {

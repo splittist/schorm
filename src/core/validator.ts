@@ -127,10 +127,10 @@ async function discoverSCOs(
     const quizFiles = findQuizzes(quizzesDir);
     for (const quizFile of quizFiles) {
       const relativeQuizPath = path.relative(projectRoot, quizFile);
-      
+
       // First, validate the quiz against the schema
       const validationResult = validateQuizFile(quizFile);
-      
+
       if (validationResult.status === 'error') {
         // Convert quiz validation errors to validation issues
         for (const quizError of validationResult.errors) {

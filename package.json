@@ -1,6 +1,6 @@
 {
   "name": "schorm",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "A CLI-driven static-site generator for SCORM 2004 e-learning content",
   "keywords": [
     "scorm",
@@ -26,7 +26,8 @@
   "files": [
     "dist",
     "bin",
-    "theme-default"
+    "theme-default",
+    "schemas"
   ],
   "scripts": {
     "build": "tsc",
@@ -53,6 +54,7 @@
     "@types/node": "^20.12.12",
     "@typescript-eslint/eslint-plugin": "^7.10.0",
     "@typescript-eslint/parser": "^7.10.0",
+    "ajv": "^8.20.0",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "tsx": "^4.11.0",

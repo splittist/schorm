@@ -298,6 +298,6 @@ This outputs a structured JSON object:
 
 ## Related Documentation
 
-- [Validation Error Codes](./validation-errors.md) - For `schorm validate` command
-- [Course Structure](./course-structure.md) - Course and module organization
-- [Frontmatter Schema](./frontmatter.md) - Lesson frontmatter requirements
+- [Architecture](./architecture.md) - Course and module organization
+- [Sequencing Recipes](./sequencing-recipes.md) - Ready-to-use sequencing patterns
+- [Quiz Schema Implementation](./quiz-schema-implementation.md) - Quiz authoring format

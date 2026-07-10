@@ -222,7 +222,11 @@ export function validateModuleSequencing(module: Module): void {
 
   // Validate mode
   if (sequencing.mode !== undefined) {
-    if (sequencing.mode !== 'linear' && sequencing.mode !== 'free' && sequencing.mode !== 'scenario') {
+    if (
+      sequencing.mode !== 'linear' &&
+      sequencing.mode !== 'free' &&
+      sequencing.mode !== 'scenario'
+    ) {
       throw new Error(
         `Module "${module.id}": sequencing.mode must be "linear", "free", or "scenario", got "${sequencing.mode}"`
       );
@@ -262,7 +266,9 @@ export function validateModuleSequencing(module: Module): void {
     }
 
     if (!sequencing.gate.quiz) {
-      throw new Error(`Module "${module.id}": sequencing.gate.quiz is required when gate is specified`);
+      throw new Error(
+        `Module "${module.id}": sequencing.gate.quiz is required when gate is specified`
+      );
     }
 
     if (typeof sequencing.gate.quiz !== 'string') {
@@ -344,13 +350,17 @@ function validateBranchingSequencing(module: Module): void {
         throw new Error(`Module "${module.id}": each choice must be an object`);
       }
       if (typeof choice.id !== 'string' || !choice.id.trim()) {
-        throw new Error(`Module "${module.id}": sequencing.choices[].id must be a non-empty string`);
+        throw new Error(
+          `Module "${module.id}": sequencing.choices[].id must be a non-empty string`
+        );
       }
       if (choiceMap.has(choice.id)) {
         throw new Error(`Module "${module.id}": duplicate choice id "${choice.id}"`);
       }
       if (typeof choice.from !== 'string' || !choice.from.trim()) {
-        throw new Error(`Module "${module.id}": sequencing.choices[].from must be a non-empty string`);
+        throw new Error(
+          `Module "${module.id}": sequencing.choices[].from must be a non-empty string`
+        );
       }
       if (!module.items.includes(choice.from)) {
         throw new Error(
@@ -412,7 +422,9 @@ function validateBranchingSequencing(module: Module): void {
         throw new Error(`Module "${module.id}": each branch must be an object`);
       }
       if (typeof branch.id !== 'string' || !branch.id.trim()) {
-        throw new Error(`Module "${module.id}": sequencing.branches[].id must be a non-empty string`);
+        throw new Error(
+          `Module "${module.id}": sequencing.branches[].id must be a non-empty string`
+        );
       }
       if (branchIds.has(branch.id)) {
         throw new Error(`Module "${module.id}": duplicate branch id "${branch.id}"`);
@@ -420,7 +432,9 @@ function validateBranchingSequencing(module: Module): void {
       branchIds.add(branch.id);
 
       if (typeof branch.start !== 'string' || !branch.start.trim()) {
-        throw new Error(`Module "${module.id}": sequencing.branches[].start must be a non-empty string`);
+        throw new Error(
+          `Module "${module.id}": sequencing.branches[].start must be a non-empty string`
+        );
       }
       if (!module.items.includes(branch.start)) {
         throw new Error(

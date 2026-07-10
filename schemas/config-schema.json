@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/splittist/schorm/main/schemas/config-schema.json",
+  "title": "schorm Configuration (schorm.config.yml)",
+  "description": "The schorm.config.yml file at a schorm project root: global build configuration.",
+  "type": "object",
+  "properties": {
+    "scorm_version": {
+      "type": "string",
+      "default": "2004-4th",
+      "description": "Target SCORM version. Currently \"2004-4th\" is the only fully supported value - the generated manifest always declares SCORM 2004 4th Edition."
+    },
+    "theme": {
+      "type": "string",
+      "default": "theme",
+      "description": "Path to the theme directory (relative to the project root) containing layouts/, partials/ and assets/. 'schorm init' copies the default theme to ./theme."
+    }
+  },
+  "additionalProperties": true
+}

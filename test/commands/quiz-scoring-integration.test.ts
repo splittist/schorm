@@ -372,7 +372,14 @@ modules:
       );
       
       expect(quizHtml).toContain('schorm-runtime.js');
-      
+
+      // Quiz pages are written to the build root, so asset references must be
+      // package-relative: "../assets/..." would escape the package in an LMS
+      // (where content is always served under a subpath) and break scoring
+      expect(quizHtml).toContain('src="assets/schorm-runtime.js"');
+      expect(quizHtml).toContain('href="assets/styles.css"');
+      expect(quizHtml).not.toContain('../assets/');
+
       // Verify runtime file is copied to build
       const runtimePath = path.join(projectPath, 'build', 'assets', 'schorm-runtime.js');
       expect(fs.existsSync(runtimePath)).toBe(true);

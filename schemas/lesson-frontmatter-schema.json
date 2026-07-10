@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/splittist/schorm/main/schemas/lesson-frontmatter-schema.json",
+  "title": "schorm Lesson Frontmatter",
+  "description": "The YAML frontmatter block at the top of a lesson markdown file (content/<module-id>/<file>.md). The markdown body below the frontmatter is the lesson content; it may embed media via {{audio src=\"...\"}} / {{video src=\"...\"}} shortcodes and standard markdown images. Rule the schema cannot express: 'module' must match a module id declared in course.yml, and 'id' must be listed in that module's 'items' array (except scenario scenes, which are discovered automatically).",
+  "type": "object",
+  "required": ["id", "title", "module"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique lesson identifier: letters, digits, hyphens and underscores only. Used as the SCO id and output filename (<id>.html)."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Human-readable lesson title, shown in the LMS and as the page heading."
+    },
+    "module": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Id of the module this lesson belongs to. MUST match a module id declared in course.yml."
+    },
+    "type": {
+      "type": "string",
+      "const": "lesson",
+      "description": "Optional content-type marker. If present it must be exactly \"lesson\"."
+    },
+    "order": {
+      "type": "number",
+      "description": "Optional ordering hint (reserved for future ordering logic; item order in course.yml governs today)."
+    },
+    "duration": {
+      "type": "number",
+      "description": "Estimated lesson duration in minutes. Informational, stored in lesson metadata."
+    },
+    "objectives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Learning objectives. Informational, stored in lesson metadata."
+    },
+    "ending": {
+      "type": "boolean",
+      "description": "Scenario mode only: marks this scene as an ending of the choose-your-own-adventure graph."
+    },
+    "mastery": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Scenario mode only: the SCORM score (0-1) reported when the learner reaches this ending scene."
+    }
+  },
+  "additionalProperties": true
+}

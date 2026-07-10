@@ -81,25 +81,17 @@ This implementation adds comprehensive quiz schema support to schorm, providing 
 - Schema uses `$defs` for reusable components
 - Future-ready for drag-drop, hotspot, and other question types
 
-## YAML ↔ TypeScript Naming Convention
+## Naming Convention
 
-The implementation bridges YAML and TypeScript naming conventions:
+All field names are **snake_case everywhere** — in the YAML files on disk, the
+JSON schema, and the TypeScript model alike (`src/core/quiz-model.ts` declares
+`shuffle_options`, `correct_answers`, `case_sensitive`, `trim_whitespace`,
+`correct_pairs`). No case mapping happens anywhere in the pipeline; the parsed
+YAML object is the model object.
 
-### YAML (snake_case)
-- `shuffle_options`
-- `correct_answers`
-- `case_sensitive`
-- `trim_whitespace`
-- `correct_pairs`
-
-### TypeScript (camelCase)
-- `shuffleOptions`
-- `correctAnswers`
-- `caseSensitive`
-- `trimWhitespace`
-- `correctPairs`
-
-A YAML loader should map between these conventions when parsing quiz files.
+Quizzes may also declare a top-level `passing_score` (number, 0–1, default
+0.8) — the score required to pass, enforced by `validateQuizFile` and reported
+to the LMS as SCORM success status.
 
 ## Testing Results
 

@@ -49,6 +49,7 @@ Not suitable for production use yet.
 - 🌐 `schorm preview` — local server with mock SCORM runtime
 - 📦 `schorm package` — create SCORM 2004 ZIP for upload to an LMS
 - 🔍 `schorm validate` — manifest + structure checks
+- 📜 `schorm schema` — print JSON schemas for quizzes, course.yml, lesson frontmatter, and config (ideal for LLM prompts)
 
 **Core Principles**
 
@@ -61,7 +62,6 @@ Not suitable for production use yet.
 **Planned Later**
 
 - Linting rules (schorm lint)
-- JSON schemas (schorm schema)
 - Course graph export (schorm graph)
 - Additional sequencing rules
 - Multi-SCO themes

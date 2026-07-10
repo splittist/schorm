@@ -10,6 +10,7 @@ import { previewCommand } from './commands/preview.js';
 import { packageCommand } from './commands/package.js';
 import { validateCommand } from './commands/validate.js';
 import { newCommand } from './commands/new.js';
+import { schemaCommand } from './commands/schema.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageJson = JSON.parse(
@@ -30,6 +31,7 @@ program.addCommand(buildCommand);
 program.addCommand(previewCommand);
 program.addCommand(packageCommand);
 program.addCommand(validateCommand);
+program.addCommand(schemaCommand);
 
 // Parse arguments
 program.parse(process.argv);

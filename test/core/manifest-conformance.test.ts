@@ -74,6 +74,7 @@ const quizzes: Quiz[] = [
     id: 'checkpoint',
     module: 'm1',
     title: 'Checkpoint Quiz',
+    passing_score: 0.7,
     questions: [
       {
         id: 'q1',
@@ -221,6 +222,10 @@ describe('generated manifest structure', () => {
         .filter((f: any) => f['@href'] === `media/${mediaFile.relativePath}`);
       expect(declarations, mediaFile.relativePath).toHaveLength(1);
     }
+  });
+
+  it("uses the gate quiz's own passing_score as the objective threshold", () => {
+    expect(manifestXml).toContain('<imsss:minNormalizedMeasure>0.7</imsss:minNormalizedMeasure>');
   });
 
   it('marks lessons and quizzes as SCOs', () => {

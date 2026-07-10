@@ -391,7 +391,8 @@ function buildItemSequencing(
   module: Module,
   itemId: string,
   itemIndex: number,
-  _isQuiz: boolean
+  _isQuiz: boolean,
+  passingScore?: number
 ): ItemSequencing | undefined {
   const sequencing = module.sequencing;
   if (!sequencing) {
@@ -516,15 +517,16 @@ function buildItemSequencing(
     // If this item is the gate quiz, it needs to write to the global objective
     if (itemId === gateQuizId) {
       const globalObjectiveId = `${module.id}-gate-passed`;
-      // Use the default SCORM passing score (0.8 = 80%)
-      // This matches the default in schorm-runtime.js SchormQuiz.DEFAULT_PASSING_SCORE
+      // Use the quiz's own passing_score so the gate threshold matches what
+      // the runtime reports as a pass; 0.8 is the shared default
+      // (schorm-runtime.js SchormQuiz.DEFAULT_PASSING_SCORE)
       const DEFAULT_PASSING_SCORE = 0.8;
       itemSeq.objectives = [
         {
           objectiveID: `local-${itemId}-passed`,
           isPrimary: true,
           satisfiedByMeasure: true,
-          minNormalizedMeasure: DEFAULT_PASSING_SCORE,
+          minNormalizedMeasure: passingScore ?? DEFAULT_PASSING_SCORE,
           mapInfo: [
             {
               targetObjectiveID: globalObjectiveId,
@@ -699,7 +701,7 @@ export function buildManifestFromCourse(
             sequencing: itemSequencing,
           });
         } else if (quiz) {
-          const itemSequencing = buildItemSequencing(module, itemId, i, true);
+          const itemSequencing = buildItemSequencing(module, itemId, i, true, quiz.passing_score);
           moduleItems.push({
             identifier: `ITEM-${itemId}`,
             title: quiz.title,

@@ -559,6 +559,76 @@ Test lesson with nested media.
     }
   });
 
+  it('should declare media on the resource of the lesson that uses it', () => {
+    const projectName = 'media-association';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // Media used by the lesson, plus one orphan file nothing references
+    fs.mkdirSync(path.join(projectPath, 'media', 'm1'), { recursive: true });
+    fs.writeFileSync(path.join(projectPath, 'media', 'm1', 'used.mp3'), 'audio');
+    fs.writeFileSync(path.join(projectPath, 'media', 'm1', 'orphan.png'), 'image');
+
+    const lessonDir = path.join(projectPath, 'content', 'm1');
+    fs.mkdirSync(lessonDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lessonDir, 'intro.md'),
+      `---
+id: m1-intro
+title: "Introduction"
+module: m1
+---
+
+# Introduction
+
+{{audio src="../media/m1/used.mp3" title="Narration"}}
+`
+    );
+
+    const courseConfig = {
+      id: projectName,
+      title: projectName,
+      modules: [{ id: 'm1', title: 'Module 1', items: ['m1-intro'] }],
+    };
+    fs.writeFileSync(
+      path.join(projectPath, 'course.yml'),
+      yaml.stringify(courseConfig)
+    );
+
+    execSync(`${CLI_PATH} build`, { cwd: projectPath, stdio: 'pipe' });
+
+    const manifest = fs.readFileSync(
+      path.join(projectPath, 'build', 'imsmanifest.xml'),
+      'utf-8'
+    );
+
+    // The lesson's own resource must list the media it uses
+    const lessonResource = manifest.match(
+      /<resource identifier="RES-m1-intro"[\s\S]*?<\/resource>/
+    )![0];
+    expect(lessonResource).toContain('<file href="media/m1/used.mp3"/>');
+    expect(lessonResource).not.toContain('orphan.png');
+
+    // Shared theme assets live in one asset resource referenced via <dependency>
+    expect(manifest).toContain('identifier="RES-common-assets"');
+    expect(lessonResource).toContain('<dependency identifierref="RES-common-assets"/>');
+    const commonResource = manifest.match(
+      /<resource identifier="RES-common-assets"[\s\S]*?<\/resource>/
+    )![0];
+    expect(commonResource).toContain('<file href="assets/schorm-runtime.js"/>');
+    expect(commonResource).toContain('<file href="assets/styles.css"/>');
+
+    // Unreferenced media is still declared (on the index resource)
+    const indexResource = manifest.match(
+      /<resource identifier="RES-index"[\s\S]*?<\/resource>/
+    )![0];
+    expect(indexResource).toContain('<file href="media/m1/orphan.png"/>');
+  });
+
   it('should include output size in build summary', () => {
     const projectName = 'summary-test';
     const projectPath = path.join(TEST_DIR, projectName);

@@ -554,13 +554,14 @@ ending: true
     const manifestPath = path.join(projectPath, 'build', 'imsmanifest.xml');
     const manifest = fs.readFileSync(manifestPath, 'utf-8');
 
-    // Count resource identifiers - should have exactly 3:
-    // 1. RES-index
-    // 2. RES-start
-    // 3. RES-end
+    // Count resource identifiers - should have exactly 4:
+    // 1. RES-common-assets (shared theme assets)
+    // 2. RES-index
+    // 3. RES-start
+    // 4. RES-end
     const resourceMatches = manifest.match(/<resource identifier="RES-/g);
     expect(resourceMatches).not.toBeNull();
-    expect(resourceMatches!.length).toBe(3);
+    expect(resourceMatches!.length).toBe(4);
 
     // Verify no duplicate identifiers
     expect((manifest.match(/identifier="RES-start"/g) || []).length).toBe(1);

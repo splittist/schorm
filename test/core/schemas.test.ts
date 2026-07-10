@@ -81,17 +81,17 @@ describe('quiz schema', () => {
 
   const quizExamples = fs
     .readdirSync(path.join(EXAMPLES_DIR, 'quizzes'))
-    .filter((f) => f.endsWith('.yml'));
+    .filter((f) => f.endsWith('.yml'))
+    .map((f) => path.join('quizzes', f))
+    .concat([path.join('linear-course', 'quizzes', 'getting-started', 'checkpoint.yml')]);
 
   it('has quiz examples to validate', () => {
     expect(quizExamples.length).toBeGreaterThan(0);
   });
 
   for (const file of quizExamples) {
-    it(`examples/quizzes/${file} validates against the schema`, () => {
-      const data = yaml.parse(
-        fs.readFileSync(path.join(EXAMPLES_DIR, 'quizzes', file), 'utf-8')
-      );
+    it(`examples/${file} validates against the schema`, () => {
+      const data = yaml.parse(fs.readFileSync(path.join(EXAMPLES_DIR, file), 'utf-8'));
       const valid = validate(data);
       expect(valid, formatErrors(validate)).toBe(true);
     });
@@ -254,13 +254,15 @@ describe('course schema', () => {
   const ajv = newAjv();
   const validate = ajv.compile(loadSchema(SCHEMA_FILES.course));
 
-  it('examples/reply-all-scenario/course.yml validates against the schema', () => {
-    const data = yaml.parse(
-      fs.readFileSync(path.join(EXAMPLES_DIR, 'reply-all-scenario', 'course.yml'), 'utf-8')
-    );
-    const valid = validate(data);
-    expect(valid, formatErrors(validate)).toBe(true);
-  });
+  for (const example of ['reply-all-scenario', 'linear-course']) {
+    it(`examples/${example}/course.yml validates against the schema`, () => {
+      const data = yaml.parse(
+        fs.readFileSync(path.join(EXAMPLES_DIR, example, 'course.yml'), 'utf-8')
+      );
+      const valid = validate(data);
+      expect(valid, formatErrors(validate)).toBe(true);
+    });
+  }
 
   it('accepts the full sequencing DSL (linear mode, gate, branches, choices)', () => {
     const course = {
@@ -347,24 +349,26 @@ describe('lesson frontmatter schema', () => {
   const ajv = newAjv();
   const validate = ajv.compile(loadSchema(SCHEMA_FILES.lesson));
 
-  const scenarioContentDir = path.join(
-    EXAMPLES_DIR,
-    'reply-all-scenario',
-    'content',
-    'email-scenario'
-  );
-  const sceneFiles = fs.readdirSync(scenarioContentDir).filter((f) => f.endsWith('.md'));
+  const lessonDirs = [
+    path.join(EXAMPLES_DIR, 'reply-all-scenario', 'content', 'email-scenario'),
+    path.join(EXAMPLES_DIR, 'linear-course', 'content', 'getting-started'),
+  ];
 
-  it('has scenario scene files to validate', () => {
-    expect(sceneFiles.length).toBeGreaterThan(0);
-  });
+  for (const dir of lessonDirs) {
+    const lessonFiles = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+    const label = path.relative(EXAMPLES_DIR, dir);
 
-  for (const file of sceneFiles) {
-    it(`frontmatter of ${file} validates against the schema`, () => {
-      const { data } = matter(fs.readFileSync(path.join(scenarioContentDir, file), 'utf-8'));
-      const valid = validate(data);
-      expect(valid, formatErrors(validate)).toBe(true);
+    it(`has lesson files to validate in ${label}`, () => {
+      expect(lessonFiles.length).toBeGreaterThan(0);
     });
+
+    for (const file of lessonFiles) {
+      it(`frontmatter of ${label}/${file} validates against the schema`, () => {
+        const { data } = matter(fs.readFileSync(path.join(dir, file), 'utf-8'));
+        const valid = validate(data);
+        expect(valid, formatErrors(validate)).toBe(true);
+      });
+    }
   }
 
   it('rejects frontmatter missing required fields', () => {
@@ -380,14 +384,13 @@ describe('config schema', () => {
   const ajv = newAjv();
   const validate = ajv.compile(loadSchema(SCHEMA_FILES.config));
 
-  it('examples/reply-all-scenario/schorm.config.yml validates against the schema', () => {
-    const data = yaml.parse(
-      fs.readFileSync(
-        path.join(EXAMPLES_DIR, 'reply-all-scenario', 'schorm.config.yml'),
-        'utf-8'
-      )
-    );
-    const valid = validate(data);
-    expect(valid, formatErrors(validate)).toBe(true);
-  });
+  for (const example of ['reply-all-scenario', 'linear-course']) {
+    it(`examples/${example}/schorm.config.yml validates against the schema`, () => {
+      const data = yaml.parse(
+        fs.readFileSync(path.join(EXAMPLES_DIR, example, 'schorm.config.yml'), 'utf-8')
+      );
+      const valid = validate(data);
+      expect(valid, formatErrors(validate)).toBe(true);
+    });
+  }
 });

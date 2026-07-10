@@ -559,6 +559,38 @@ Test lesson with nested media.
     }
   });
 
+  it('should build the linear-course example end to end', () => {
+    const examplePath = path.join(__dirname, '..', '..', 'examples', 'linear-course');
+    const projectPath = path.join(TEST_DIR, 'linear-course');
+
+    // Copy the example so build output never lands inside examples/;
+    // its theme path (../../theme-default) still resolves from test-output/
+    fs.cpSync(examplePath, projectPath, { recursive: true });
+
+    execSync(`${CLI_PATH} validate`, { cwd: projectPath, stdio: 'pipe' });
+    execSync(`${CLI_PATH} build`, { cwd: projectPath, stdio: 'pipe' });
+
+    const buildDir = path.join(projectPath, 'build');
+    for (const file of [
+      'welcome.html',
+      'key-concepts.html',
+      'checkpoint.html',
+      'summary.html',
+      'index.html',
+      'imsmanifest.xml',
+    ]) {
+      expect(fs.existsSync(path.join(buildDir, file)), file).toBe(true);
+    }
+
+    const manifest = fs.readFileSync(path.join(buildDir, 'imsmanifest.xml'), 'utf-8');
+    // The media lesson's resource declares its own media
+    expect(manifest).toMatch(
+      /<resource identifier="RES-key-concepts"[\s\S]*?media\/getting-started\/narration\.wav[\s\S]*?<\/resource>/
+    );
+    // The gate threshold matches the quiz's passing_score
+    expect(manifest).toContain('<imsss:minNormalizedMeasure>0.7</imsss:minNormalizedMeasure>');
+  });
+
   it('should declare media on the resource of the lesson that uses it', () => {
     const projectName = 'media-association';
     const projectPath = path.join(TEST_DIR, projectName);

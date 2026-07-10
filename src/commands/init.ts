@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'yaml';
 import { fileURLToPath } from 'url';
+import { SUPPORTED_SCORM_VERSIONS } from '../core/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +43,14 @@ function initializeProject(projectName: string, options: InitOptions): void {
   const projectPath = path.resolve(process.cwd(), projectName);
   const scormVersion = options.scormVersion || '2004-4th';
   const title = options.title || projectName;
+
+  // Reject unsupported versions here rather than letting every subsequent
+  // build fail against the generated config
+  if (!(SUPPORTED_SCORM_VERSIONS as readonly string[]).includes(scormVersion)) {
+    console.error(`Error: Unsupported SCORM version "${scormVersion}".`);
+    console.error(`Supported values: ${SUPPORTED_SCORM_VERSIONS.join(', ')}`);
+    process.exit(1);
+  }
 
   // Check if directory exists
   if (fs.existsSync(projectPath)) {

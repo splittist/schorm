@@ -92,10 +92,11 @@ and verified to stay within the served directory (403 otherwise).
 
 ### SCORM runtime and data model
 
-- **No `cmi.interactions.*` reporting.** Per-question responses and results are
-  computed client-side (`SchormQuiz.evaluateQuiz`) but never written to the SCORM
-  interactions data model, so LMS-side item analytics are impossible. This is the
-  most valuable runtime feature to add next.
+- ~~**No `cmi.interactions.*` reporting.**~~ **Done (July 2026):** quiz
+  submission now writes one `cmi.interactions.n.*` record per question (id,
+  SCORM-mapped type, learner_response and correct_responses patterns, result,
+  weighting, timestamp), appended after any existing interactions via
+  `cmi.interactions._count`.
 - **No suspend/resume or bookmarking outside scenario mode.** Only
   `scenario.html` sets `cmi.location`/`cmi.suspend_data`. Lessons and quizzes
   have no re-entry handling (`cmi.entry`/`cmi.exit`), and quizzes don't restore
@@ -124,10 +125,9 @@ and verified to stay within the served directory (403 otherwise).
 
 ### Determinism
 
-- **Media IDs embed `Date.now()`** (`src/core/markdown-media-shortcodes.ts`
-  `generateMediaId`), so every build produces different IDs and markup — directly
-  contradicting the README's "deterministic builds" principle. Derive IDs from
-  the content path (or a content hash) instead.
+- ~~**Media IDs embed `Date.now()`.**~~ **Done (July 2026):** media IDs are now
+  derived from the shortcode, source filename, and document-scoped occurrence
+  index (`audio-intro-0`), so the same input produces identical build output.
 
 ### Security / content trust
 
@@ -163,14 +163,19 @@ and verified to stay within the served directory (403 otherwise).
 
 ### Schemas
 
-- **`schemas/quiz-schema.json` is an orphan.** Nothing loads it: the validator in
-  `src/core/quiz-validator.ts` is hand-rolled. The schema also lacks
-  `passing_score` (which the validator and model support), has no `$id`, and no
-  example carries a `$schema` header. Either wire it into validation (e.g. ajv)
-  or ship the planned `schorm schema` command; in both cases add `passing_score`
-  and `$id`, and reference it from the example quizzes.
-- **No schema for `course.yml` or lesson frontmatter**, although the PRD promises
-  them. These would make the "LLM-friendly schemas" pitch real.
+- ~~**`schemas/quiz-schema.json` is an orphan.**~~ **Done (July 2026):** the quiz
+  schema now carries `passing_score`, an `$id`, defaults, and description-text
+  documentation of every cross-reference rule the validators enforce; the
+  `schorm schema` command prints any schema for LLM handoff; example quizzes
+  carry yaml-language-server modelines; and `test/core/schemas.test.ts` (ajv,
+  dev-only dependency) validates the examples and cross-checks the schema
+  against the hand-written validator so it cannot silently drift again.
+- ~~**No schema for `course.yml` or lesson frontmatter.**~~ **Done (July 2026):**
+  `schemas/course-schema.json` (including the full sequencing/branching DSL),
+  `schemas/lesson-frontmatter-schema.json`, and `schemas/config-schema.json`
+  now exist, documented in `schemas/README.md`. The hand-written validators
+  remain authoritative at build time; the schemas are the accurate,
+  LLM-consumable specification of the file formats.
 
 ### Documentation
 

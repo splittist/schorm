@@ -157,14 +157,15 @@ and verified to stay within the served directory (403 otherwise).
   `test/fixtures/xsd/` (see its README — the schema hosts are unreachable from
   the sandboxed dev environment, so the XSDs still need to be vendored by a
   maintainer with network access).
-- **No coverage measurement** (`@vitest/coverage-v8` not configured), so
-  untested modules are invisible. `src/core/config.ts` has zero direct coverage
-  and `src/cli.ts` routing has no dedicated test.
-- The E2E suite is strong (real CLI invocations, real HTTP preview requests, full
-  build→package zips) but slow: each `it` shells out to `init`/`new`/`build` in
-  fresh processes, and file execution is now serialized (see P1.9) to avoid the
-  shared `test-output/` collisions. Moving to per-file temp directories would
-  allow re-enabling parallelism and cut runtime substantially.
+- ~~**No coverage measurement.**~~ **Done (July 2026):** `npm run
+  test:coverage` (@vitest/coverage-v8). In-process baseline: 53% statements
+  overall — command modules read 0% because the E2E tests exercise them in
+  subprocesses, which V8 coverage cannot see; core modules sit at ~63%.
+  Tests are also now typechecked (`npm run typecheck`, run in CI), which
+  they never were before.
+- ~~The E2E suite is slow and serialized.~~ **Done (July 2026):** every test
+  file owns a unique directory, so vitest file parallelism is back on — full
+  suite ~150s → ~48s.
 
 ### Schemas
 
@@ -218,33 +219,36 @@ single small subsection):
   `examples/linear-course/` — lessons with media, a mixed-type gating quiz,
   linear sequencing, and a walkthrough README; validated against the schemas
   and built end-to-end in the test suite.
-- Repo hygiene: CHANGELOG, CONTRIBUTING, issue/PR templates, Dependabot config,
-  and release automation (`prepublishOnly` runs only `build` — a broken test
-  suite can publish).
+- ~~Repo hygiene.~~ **Done (July 2026):** CHANGELOG.md (Keep-a-Changelog),
+  CONTRIBUTING.md, Dependabot (npm + actions, weekly), bug/feature issue
+  forms, a PR template, and `prepublishOnly` now runs
+  lint + typecheck + build + test.
 
 ### Code quality
 
-- `src/commands/build.ts` is a ~580-line monolith mixing orchestration, logging,
-  rendering, and error mapping; the media-placeholder replacement rebuilds a
-  `RegExp` per media item per lesson.
-- Untyped side channels: `(module as any)._generatedSequencing`,
-  `(lesson as any).isScenario/isEnding/masteryScore/sceneChoices`. These deserve
-  real types (extend the models or use a dedicated scenario type).
-- Duplicated logic: DFS cycle detection exists in both `course-model.ts` and
-  `scenario-builder.ts` (`detectCycles` is now wired into the build as a
-  `W-SCENARIO-CYCLE` warning, July 2026, but the duplication remains);
-  `escapeHtml`/`escapeRegex` are re-implemented locally in `scenario-builder.ts`.
-- Hardcoded constants: the default passing score `0.8` is still duplicated
-  between `manifest.ts` and `schorm-runtime.js` (though the manifest gate now
-  honors a quiz's explicit `passing_score`); scenario pass threshold
-  `0.6` inline in `scenario.html`.
-- `validateModuleSequencing` reports author-facing warnings via `console.warn`
-  instead of the structured `ValidationResult.warnings` channel, so they never
-  appear in `--json` output.
-- `media.ts` `mimeType` is a stubbed `''` with a TODO; `validateConfig` in
-  `config.ts` is never called.
-- Tooling: ESLint is on the legacy `.eslintrc.cjs` format with ESLint 8;
-  `parserOptions.project` is set but the type-checked rulesets aren't enabled
-  (paying the cost of type info without the stronger rules). `tsconfig.json`
-  excludes test files from `tsc`, so tests are only type-checked when Vitest
-  runs them — a `typecheck` script covering tests would close that.
+- ~~`src/commands/build.ts` monolith.~~ **Done (July 2026):** split into
+  build-scenario / build-templates / build-render core modules; both example
+  courses build byte-identically across the refactor.
+- ~~Untyped side channels.~~ **Done (July 2026):** `Module.generatedSequencing`
+  and `Lesson.isEnding/masteryScore` are typed optional fields; all `as any`
+  cast sites removed (the never-read `isScenario`/`sceneChoices` writes were
+  dropped).
+- Duplicated logic: DFS cycle detection still exists in both
+  `course-model.ts` (throws, route graphs) and `scenario-builder.ts`
+  (collects, scene graphs) — different data models and contracts, left as is
+  deliberately. `escapeHtml`/`escapeRegex` in `scenario-builder.ts` are the
+  only definitions in src, so there is nothing to deduplicate against.
+- ~~Hardcoded constants.~~ **Done (July 2026):** `DEFAULT_PASSING_SCORE` is
+  exported from quiz-model and used by the manifest; a drift test pins the
+  runtime's copy and the schema default to it. The scenario template's
+  0.6/0.7/0.4 thresholds are documented as theme-local presentation
+  constants.
+- ~~`validateModuleSequencing` console.warn.~~ **Done (July 2026):** surfaced
+  as structured warnings in `validate --json` and `build --json`.
+- ~~`media.ts` mimeType stub.~~ **Done (July 2026):** filled from the shared
+  `src/core/mime.ts` map (also used by the preview server).
+  `validateConfig` has been wired into `loadConfig` since tranche 2.
+- Tooling: ESLint remains on the legacy `.eslintrc.cjs` format with ESLint 8
+  and without the type-checked rulesets — an ESLint 9 flat-config migration
+  is the remaining modernization item. (Tests are now typechecked via
+  `npm run typecheck`; done July 2026.)

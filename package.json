@@ -42,7 +42,7 @@
     "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "commander": "^12.1.0",
     "gray-matter": "^4.0.3",
     "handlebars": "^4.7.8",
@@ -51,7 +51,7 @@
     "yaml": "^2.4.5"
   },
   "devDependencies": {
-    "@types/archiver": "^6.0.2",
+    "@types/archiver": "^8.0.0",
     "@types/markdown-it": "^14.1.1",
     "@types/node": "^20.12.12",
     "@typescript-eslint/eslint-plugin": "^7.10.0",

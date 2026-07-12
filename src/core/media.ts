@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { MediaItem } from './course-model.js';
+import { getMimeType } from './mime.js';
 
 export interface MediaFile {
   originalPath: string;
@@ -85,7 +86,7 @@ export function processMediaFiles(mediaDir: string, outputDir: string): MediaFil
           originalPath: fullPath,
           relativePath: normalizedRelPath,
           type: detectMediaType(fullPath),
-          mimeType: '', // TODO: Determine proper MIME type
+          mimeType: getMimeType(path.extname(fullPath)),
         });
       }
     }

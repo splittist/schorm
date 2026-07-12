@@ -6,24 +6,13 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
+import { getMimeType } from '../core/mime.js';
 
 export interface PreviewServerOptions {
   port: number;
   directory: string;
   open?: boolean;
 }
-
-const MIME_TYPES: Record<string, string> = {
-  '.html': 'text/html',
-  '.js': 'application/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.xml': 'application/xml',
-};
 
 // Mock SCORM 2004 API that gets injected into HTML pages during preview
 const MOCK_SCORM_API = `
@@ -239,7 +228,7 @@ export class PreviewServer {
     }
 
     const ext = path.extname(filePath);
-    const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+    const mimeType = getMimeType(ext);
 
     // For HTML files, inject the mock SCORM API
     if (ext === '.html') {

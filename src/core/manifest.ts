@@ -7,6 +7,7 @@ import type { BranchCondition, BranchRoute, Course, Lesson, Module } from './cou
 import type { GeneratedSequencing } from './scenario-builder.js';
 import type { MediaFile } from './media.js';
 import type { Quiz } from './quiz-model.js';
+import { DEFAULT_PASSING_SCORE } from './quiz-model.js';
 
 export interface ManifestOptions {
   identifier: string;
@@ -519,9 +520,7 @@ function buildItemSequencing(
     if (itemId === gateQuizId) {
       const globalObjectiveId = `${module.id}-gate-passed`;
       // Use the quiz's own passing_score so the gate threshold matches what
-      // the runtime reports as a pass; 0.8 is the shared default
-      // (schorm-runtime.js SchormQuiz.DEFAULT_PASSING_SCORE)
-      const DEFAULT_PASSING_SCORE = 0.8;
+      // the runtime reports as a pass
       itemSeq.objectives = [
         {
           objectiveID: `local-${itemId}-passed`,

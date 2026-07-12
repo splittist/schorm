@@ -16,6 +16,7 @@ import matter from 'gray-matter';
 import Ajv from 'ajv';
 import { validateQuiz } from '../../src/core/quiz-validator.js';
 import type { QuizValidationError } from '../../src/core/quiz-validator.js';
+import { DEFAULT_PASSING_SCORE } from '../../src/core/quiz-model.js';
 
 const SCHEMAS_DIR = path.join(process.cwd(), 'schemas');
 const EXAMPLES_DIR = path.join(process.cwd(), 'examples');
@@ -76,7 +77,19 @@ describe('quiz schema', () => {
       properties: Record<string, { default?: unknown }>;
     };
     expect(schema.properties.passing_score).toBeDefined();
-    expect(schema.properties.passing_score.default).toBe(0.8);
+    expect(schema.properties.passing_score.default).toBe(DEFAULT_PASSING_SCORE);
+  });
+
+  it('keeps the default passing score in sync across model, schema, and runtime', () => {
+    // The shipped runtime cannot import from the build, so it carries its
+    // own copy of the constant - this pins the two together
+    const runtimeCode = fs.readFileSync(
+      path.join(process.cwd(), 'theme-default/assets/schorm-runtime.js'),
+      'utf-8'
+    );
+    const match = runtimeCode.match(/DEFAULT_PASSING_SCORE:\s*([\d.]+)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBe(DEFAULT_PASSING_SCORE);
   });
 
   const quizExamples = fs

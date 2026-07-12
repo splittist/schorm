@@ -200,7 +200,10 @@
             SchormRuntime.setValue('cmi.score.max', '1');
             SchormRuntime.setValue('cmi.score.raw', (masteryScore * 100).toString());
             
-            // Determine success based on mastery threshold
+            // Success threshold for scenario endings: mastery >= 0.6 counts
+            // as passed. (The 0.7/0.4 cutoffs used for the ending badge's
+            // high/medium/low styling live in this template's body markup -
+            // all three are presentation choices local to this theme.)
             const passThreshold = 0.6;
             SchormRuntime.setValue('cmi.success_status', masteryScore >= passThreshold ? 'passed' : 'failed');
         }

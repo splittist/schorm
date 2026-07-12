@@ -167,18 +167,26 @@ function extractChoices(markdown: string): Choice[] {
  * 1. Source nodes (with choices) need objectives that WRITE to global objectives
  * 2. Target nodes need objectives that READ from global objectives for preconditions
  */
+export interface GeneratedSequencingItem {
+  identifier: string;
+  identifierref: string;
+  title: string;
+  sequencing?: ItemSequencing;
+}
+
+/**
+ * Sequencing data auto-generated from a scenario graph, consumed by the
+ * manifest builder in place of the module's declared items
+ */
+export interface GeneratedSequencing {
+  items: GeneratedSequencingItem[];
+  controlMode: { choice: boolean; flow: boolean };
+}
+
 export function generateSequencingFromGraph(
   graph: ScenarioGraph,
   moduleId: string
-): {
-  items: Array<{
-    identifier: string;
-    identifierref: string;
-    title: string;
-    sequencing?: ItemSequencing;
-  }>;
-  controlMode: { choice: boolean; flow: boolean };
-} {
+): GeneratedSequencing {
   const items: Array<{
     identifier: string;
     identifierref: string;

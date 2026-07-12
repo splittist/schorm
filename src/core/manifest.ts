@@ -4,6 +4,7 @@
 
 import { create } from 'xmlbuilder2';
 import type { BranchCondition, BranchRoute, Course, Lesson, Module } from './course-model.js';
+import type { GeneratedSequencing } from './scenario-builder.js';
 import type { MediaFile } from './media.js';
 import type { Quiz } from './quiz-model.js';
 
@@ -597,7 +598,7 @@ function buildItemSequencing(
  */
 function buildModuleSequencing(
   module: Module,
-  generatedSequencing?: any
+  generatedSequencing?: GeneratedSequencing
 ): OrganizationSequencing | undefined {
   // If scenario module with generated sequencing, use that control mode
   if (generatedSequencing?.controlMode) {
@@ -668,7 +669,7 @@ export function buildManifestFromCourse(
     const moduleItems: OrganizationItem[] = [];
 
     // Check if this is a scenario module with generated sequencing
-    const generatedSequencing = (module as any)._generatedSequencing;
+    const generatedSequencing = module.generatedSequencing;
 
     if (generatedSequencing) {
       // Use pre-generated items with sequencing from scenario builder

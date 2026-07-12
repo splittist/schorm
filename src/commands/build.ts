@@ -4,21 +4,16 @@ import * as path from 'path';
 import { loadConfig } from '../core/config.js';
 import { loadCourse, findQuizzes, loadQuiz } from '../core/course-model.js';
 import { parseLesson, findLessons } from '../core/markdown.js';
-import { TemplateEngine, loadTemplate } from '../core/templates.js';
 import { processMediaFiles, copyDirectory } from '../core/media.js';
 import { buildManifestFromCourse } from '../core/manifest.js';
 import { validateQuizFile } from '../core/quiz-validator.js';
-import {
-  buildScenarioGraph,
-  generateSequencingFromGraph,
-  processScenarioLinks,
-  detectCycles,
-} from '../core/scenario-builder.js';
+import { processScenarioModules } from '../core/build-scenario.js';
+import { loadThemeTemplates } from '../core/build-templates.js';
+import { renderLessons, renderQuizzes, renderIndexPage } from '../core/build-render.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
 import type { Lesson, Quiz } from '../core/course-model.js';
 import {
-  createBuildError,
   wrapError,
   formatErrorsForHuman,
   formatBuildResultAsJson,
@@ -100,80 +95,11 @@ export const buildCommand = new Command('build')
         throw new Error('Build directory setup failed');
       }
 
-      // Step 3.5: Process scenario modules
-      // Detect and build scenario graphs before parsing standard lessons
-      const scenarioLessons: Lesson[] = [];
-      const scenarioModules = course.modules.filter((m) => m.sequencing?.mode === 'scenario');
+      // Step 4: Process scenario modules (builds scene graphs, attaches
+      // generated sequencing, parses scenes into lessons)
+      const scenarioLessons = await processScenarioModules(course, errors, warnings, log);
 
-      if (scenarioModules.length > 0) {
-        log('🎬 Processing scenario modules...');
-
-        for (const module of scenarioModules) {
-          try {
-            const scenarioConfig = module.sequencing!.scenario!;
-            // Use module subdirectory within content directory
-            const baseContentDir = scenarioConfig.contentDir || 'content';
-            const contentDir = path.resolve(baseContentDir, module.id);
-
-            log(`   📖 Building scenario graph for module "${module.id}"...`);
-            const graph = await buildScenarioGraph(contentDir, scenarioConfig.start);
-
-            log(`      Found ${graph.nodes.size} scenes (${graph.endings.size} endings)`);
-
-            // Navigation loops ("try again" scenes) are legitimate in
-            // scenarios, but often unintentional - surface them as warnings
-            for (const cycle of detectCycles(graph)) {
-              warnings.push(
-                createBuildError(
-                  'W-SCENARIO-CYCLE',
-                  `Scenario navigation loop in module "${module.id}": ${cycle}`,
-                  { moduleId: module.id, originatingStep: 'scenario', severity: 'warning' }
-                )
-              );
-              log(`      ⚠ ${cycle}`);
-            }
-
-            // Generate sequencing data (will be used in manifest generation)
-            const sequencingData = generateSequencingFromGraph(graph, module.id);
-
-            // Store sequencing data on module for manifest generation
-            // We'll use a temporary property that won't conflict with the schema
-            (module as any)._generatedSequencing = sequencingData;
-
-            // Parse each scene as a lesson
-            for (const node of graph.nodes.values()) {
-              const filePath = path.join(contentDir, node.file);
-              const lesson = parseLesson(filePath, course);
-
-              // Process choice links to buttons
-              lesson.content = processScenarioLinks(lesson.content, node.choices);
-
-              // Add scenario metadata
-              (lesson as any).isScenario = true;
-              (lesson as any).isEnding = node.isEnding;
-              (lesson as any).masteryScore = node.masteryScore;
-              (lesson as any).sceneChoices = node.choices;
-
-              scenarioLessons.push(lesson);
-              log(`      ✓ ${lesson.id}: ${lesson.title}${node.isEnding ? ' (ending)' : ''}`);
-            }
-
-            // Update module items to reflect the auto-generated scenes
-            module.items = Array.from(graph.nodes.keys());
-          } catch (error) {
-            errors.push(
-              wrapError(error, 'E-SCENARIO-BUILD', 'Failed to build scenario graph', {
-                moduleId: module.id,
-                originatingStep: 'scenario',
-              })
-            );
-          }
-        }
-
-        log();
-      }
-
-      // Step 4: Parse lessons
+      // Step 5: Parse lessons
       log('📝 Parsing lessons...');
       const contentDir = path.resolve('content');
       const lessonFiles = findLessons(contentDir);
@@ -213,7 +139,7 @@ export const buildCommand = new Command('build')
 
       log(`   Total lessons: ${lessons.length}\n`);
 
-      // Step 4.5: Parse and validate quizzes
+      // Step 6: Parse and validate quizzes
       log('📝 Parsing and validating quizzes...');
       const quizzesDir = path.resolve('quizzes');
       const quizFiles = findQuizzes(quizzesDir);
@@ -263,215 +189,23 @@ export const buildCommand = new Command('build')
         throw new Error('Quiz validation failed');
       }
 
-      // Step 5: Set up template engine
+      // Step 7: Set up template engine and load theme layouts
       log('🎨 Setting up templates...');
       const themeDir = path.resolve(config.theme);
-      const layoutsDir = path.join(themeDir, 'layouts');
-      const partialsDir = path.join(themeDir, 'partials');
+      const templates = loadThemeTemplates(
+        themeDir,
+        quizzes.length > 0,
+        scenarioLessons.length > 0,
+        errors,
+        log
+      );
 
-      const templateEngine = new TemplateEngine();
-      try {
-        templateEngine.loadPartials(partialsDir);
-        log(`   Theme directory: ${themeDir}\n`);
-      } catch (error) {
-        errors.push(
-          wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load template partials', {
-            file: partialsDir,
-            originatingStep: 'template',
-          })
-        );
-      }
+      // Step 8: Render lessons, quizzes, and the index page
+      renderLessons(templates, course, scenarioLessons, lessons, outputDir, errors, log);
+      renderQuizzes(templates, course, quizzes, outputDir, errors, log);
+      renderIndexPage(templates, course, lessons, outputDir, errors, log);
 
-      let lessonTemplate;
-      try {
-        lessonTemplate = loadTemplate(path.join(layoutsDir, 'lesson.html'));
-      } catch (error) {
-        errors.push(
-          wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load lesson template', {
-            file: path.join(layoutsDir, 'lesson.html'),
-            originatingStep: 'template',
-          })
-        );
-        throw new Error('Template load failed');
-      }
-
-      let quizTemplate;
-      try {
-        quizTemplate = loadTemplate(path.join(layoutsDir, 'quiz.html'));
-      } catch (error) {
-        errors.push(
-          wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load quiz template', {
-            file: path.join(layoutsDir, 'quiz.html'),
-            originatingStep: 'template',
-          })
-        );
-        // Quiz template is optional - only throw if there are quizzes
-        if (quizzes.length > 0) {
-          throw new Error('Quiz template load failed but quizzes exist');
-        }
-      }
-
-      let scenarioTemplate;
-      try {
-        scenarioTemplate = loadTemplate(path.join(layoutsDir, 'scenario.html'));
-      } catch (error) {
-        // Scenario template is optional - only throw if there are scenario lessons
-        if (scenarioLessons.length > 0) {
-          errors.push(
-            wrapError(error, 'E-TEMPLATE-LOAD', 'Failed to load scenario template', {
-              file: path.join(layoutsDir, 'scenario.html'),
-              originatingStep: 'template',
-            })
-          );
-          throw new Error('Scenario template load failed but scenario modules exist');
-        }
-      }
-
-      // Step 6: Render lessons to HTML
-      log('🖼️  Rendering lessons...');
-
-      // Render scenario lessons first
-      for (const lesson of scenarioLessons) {
-        try {
-          const html = templateEngine.render(scenarioTemplate!, {
-            courseTitle: course.title,
-            lesson: {
-              id: lesson.id,
-              title: lesson.title,
-              content: lesson.content,
-              metadata: lesson.metadata,
-              isEnding: (lesson as any).isEnding,
-              masteryScore: (lesson as any).masteryScore,
-            },
-          });
-
-          const outputPath = path.join(outputDir, `${lesson.id}.html`);
-          fs.writeFileSync(outputPath, html, 'utf-8');
-          log(`   ✓ ${lesson.id}.html (scenario)`);
-        } catch (error) {
-          errors.push(
-            wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render scenario template', {
-              scoId: lesson.id,
-              moduleId: lesson.module,
-              originatingStep: 'template',
-            })
-          );
-        }
-      }
-
-      // Render regular lessons
-      for (const lesson of lessons) {
-        try {
-          let html = templateEngine.render(lessonTemplate, {
-            courseTitle: course.title,
-            lesson: {
-              id: lesson.id,
-              title: lesson.title,
-              content: lesson.content,
-              metadata: lesson.metadata,
-            },
-          });
-
-          // Replace media placeholders with rendered media blocks
-          if (lesson.media && lesson.media.length > 0) {
-            for (const mediaItem of lesson.media) {
-              const placeholderPattern = new RegExp(
-                `<schorm-media[^>]*data-schorm-id="${mediaItem.id}"[^>]*></schorm-media>`,
-                'g'
-              );
-              const mediaHtml = templateEngine.render(
-                '{{> media-block media=this}}',
-                mediaItem as unknown as Record<string, unknown>
-              );
-              html = html.replace(placeholderPattern, mediaHtml);
-            }
-          }
-
-          const outputPath = path.join(outputDir, `${lesson.id}.html`);
-          fs.writeFileSync(outputPath, html, 'utf-8');
-          log(`   ✓ ${lesson.id}.html`);
-        } catch (error) {
-          errors.push(
-            wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render lesson template', {
-              scoId: lesson.id,
-              moduleId: lesson.module,
-              originatingStep: 'template',
-            })
-          );
-        }
-      }
-      log();
-
-      // Step 6.5: Render quizzes to HTML
-      if (quizzes.length > 0) {
-        log('🖼️  Rendering quizzes...');
-        for (const quiz of quizzes) {
-          try {
-            if (!quizTemplate) {
-              throw new Error('Quiz template not loaded');
-            }
-            const html = templateEngine.render(quizTemplate, {
-              courseTitle: course.title,
-              quiz: quiz,
-            });
-
-            const outputPath = path.join(outputDir, `${quiz.id}.html`);
-            fs.writeFileSync(outputPath, html, 'utf-8');
-            log(`   ✓ ${quiz.id}.html`);
-          } catch (error) {
-            errors.push(
-              wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render quiz template', {
-                scoId: quiz.id,
-                moduleId: quiz.module,
-                originatingStep: 'template',
-              })
-            );
-          }
-        }
-        log();
-      }
-
-      // Step 6.5: Generate index.html landing page
-      log('🏠 Generating index page...');
-      try {
-        const indexTemplate = loadTemplate(path.join(layoutsDir, 'index.html'));
-
-        // Build modules data with their items (lessons)
-        const modulesWithItems = course.modules.map((module) => {
-          const items = module.items
-            .map((itemId) => lessons.find((l) => l.id === itemId))
-            .filter((item) => item !== undefined)
-            .map((lesson) => ({
-              id: lesson!.id,
-              title: lesson!.title,
-            }));
-
-          return {
-            id: module.id,
-            title: module.title,
-            items,
-          };
-        });
-
-        const indexHtml = templateEngine.render(indexTemplate, {
-          courseTitle: course.title,
-          courseDescription: course.metadata?.description,
-          modules: modulesWithItems,
-        });
-
-        const indexPath = path.join(outputDir, 'index.html');
-        fs.writeFileSync(indexPath, indexHtml, 'utf-8');
-        log(`   ✓ index.html\n`);
-      } catch (error) {
-        errors.push(
-          wrapError(error, 'E-TEMPLATE-RENDER', 'Failed to render index page', {
-            file: 'index.html',
-            originatingStep: 'template',
-          })
-        );
-      }
-
-      // Step 7: Copy theme assets
+      // Step 9: Copy theme assets
       log('🎨 Copying theme assets...');
       const assetsDir = path.join(themeDir, 'assets');
       const outputAssetsDir = path.join(outputDir, 'assets');
@@ -493,7 +227,7 @@ export const buildCommand = new Command('build')
       }
       log();
 
-      // Step 8: Copy media files
+      // Step 10: Copy media files
       log('📷 Processing media files...');
       const mediaDir = path.resolve('media');
       let mediaFiles: MediaFile[] = [];
@@ -514,7 +248,7 @@ export const buildCommand = new Command('build')
       }
       log();
 
-      // Step 9: Generate manifest
+      // Step 11: Generate manifest
       log('📜 Generating SCORM manifest...');
       try {
         // Combine scenario lessons with regular lessons for manifest

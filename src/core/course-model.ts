@@ -197,7 +197,12 @@ export interface LessonFrontmatter {
   [key: string]: unknown;
 }
 
-export function loadCourse(coursePath: string): Course {
+/**
+ * Load and validate course.yml. When a `warnings` sink is provided,
+ * non-fatal findings (e.g. scenario-mode config that will be ignored) are
+ * pushed there instead of being logged to the console.
+ */
+export function loadCourse(coursePath: string, warnings?: CourseWarning[]): Course {
   if (!fs.existsSync(coursePath)) {
     throw new Error(`Course file not found: ${coursePath}`);
   }
@@ -217,17 +222,36 @@ export function loadCourse(coursePath: string): Course {
 
   // Validate sequencing configuration for each module
   for (const module of course.modules) {
-    validateModuleSequencing(module);
+    validateModuleSequencing(module, warnings);
   }
 
   return course;
 }
 
 /**
- * Validate module sequencing configuration
- * Throws an error if the configuration is invalid
+ * A non-fatal problem found while validating a course, for callers that
+ * surface warnings through structured channels (build/validate output)
  */
-export function validateModuleSequencing(module: Module): void {
+export interface CourseWarning {
+  code: string;
+  message: string;
+  moduleId?: string;
+}
+
+/**
+ * Validate module sequencing configuration.
+ * Throws an error if the configuration is invalid. Non-fatal findings are
+ * pushed to `warnings` when a sink is provided, otherwise logged via
+ * console.warn (preserving the behavior for direct library callers).
+ */
+export function validateModuleSequencing(module: Module, warnings?: CourseWarning[]): void {
+  const warn = (code: string, message: string): void => {
+    if (warnings) {
+      warnings.push({ code, message, moduleId: module.id });
+    } else {
+      console.warn(message);
+    }
+  };
   const sequencing = module.sequencing;
   if (!sequencing) {
     return; // No sequencing config is valid (defaults to free navigation)
@@ -259,13 +283,15 @@ export function validateModuleSequencing(module: Module): void {
       );
     }
     if (module.items.length > 0) {
-      console.warn(
+      warn(
+        'W-SCENARIO-ITEMS-IGNORED',
         `Module "${module.id}": items[] will be ignored in scenario mode (auto-generated from markdown graph)`
       );
     }
     // In scenario mode, branches and choices are auto-generated
     if (sequencing.branches || sequencing.choices) {
-      console.warn(
+      warn(
+        'W-SCENARIO-BRANCHES-IGNORED',
         `Module "${module.id}": branches and choices will be ignored in scenario mode (auto-generated from markdown)`
       );
     }

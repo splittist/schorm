@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Course, loadCourse, findQuizzes, loadQuiz } from './course-model.js';
 import { findLessons, parseLesson } from './markdown.js';
-import type { MediaItem } from './course-model.js';
+import type { CourseWarning, MediaItem } from './course-model.js';
 import { validateQuizFile, type QuizValidationError } from './quiz-validator.js';
 
 export interface ValidationIssue {
@@ -57,7 +57,16 @@ export async function validateProject(projectRoot: string): Promise<ValidationRe
       return { ok: false, errors, warnings };
     }
 
-    const course = loadCourse(courseYmlPath);
+    const courseWarnings: CourseWarning[] = [];
+    const course = loadCourse(courseYmlPath, courseWarnings);
+    for (const warning of courseWarnings) {
+      warnings.push({
+        code: warning.code,
+        message: warning.message,
+        severity: 'warning',
+        moduleId: warning.moduleId,
+      });
+    }
 
     // Discover all SCOs (lessons and quizzes)
     const scos = await discoverSCOs(projectRoot, course, errors);

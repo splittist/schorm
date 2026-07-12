@@ -12,8 +12,9 @@ import { loadThemeTemplates } from '../core/build-templates.js';
 import { renderLessons, renderQuizzes, renderIndexPage } from '../core/build-render.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
-import type { Lesson, Quiz } from '../core/course-model.js';
+import type { CourseWarning, Lesson, Quiz } from '../core/course-model.js';
 import {
+  createBuildError,
   wrapError,
   formatErrorsForHuman,
   formatBuildResultAsJson,
@@ -63,7 +64,18 @@ export const buildCommand = new Command('build')
       log('📚 Loading course model...');
       let course;
       try {
-        course = loadCourse(courseYmlPath);
+        const courseWarnings: CourseWarning[] = [];
+        course = loadCourse(courseYmlPath, courseWarnings);
+        for (const warning of courseWarnings) {
+          warnings.push(
+            createBuildError(warning.code, warning.message, {
+              moduleId: warning.moduleId,
+              originatingStep: 'course',
+              severity: 'warning',
+            })
+          );
+          log(`   ⚠ ${warning.message}`);
+        }
         log(`   Course: ${course.title}`);
         log(`   Modules: ${course.modules.length}\n`);
       } catch (error) {

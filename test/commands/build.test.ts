@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import * as yaml from 'yaml';
 
 const CLI_PATH = path.join(__dirname, '..', '..', 'bin', 'schorm');
-const TEST_DIR = path.join(__dirname, '..', '..', 'test-output');
+const TEST_DIR = path.join(__dirname, '..', '..', 'test-output', 'build-cmd');
 
 describe('schorm build command', () => {
   beforeEach(() => {
@@ -563,9 +563,18 @@ Test lesson with nested media.
     const examplePath = path.join(__dirname, '..', '..', 'examples', 'linear-course');
     const projectPath = path.join(TEST_DIR, 'linear-course');
 
-    // Copy the example so build output never lands inside examples/;
-    // its theme path (../../theme-default) still resolves from test-output/
+    // Copy the example so build output never lands inside examples/, and
+    // repoint its theme at the repo's theme-default (the example's relative
+    // ../../theme-default doesn't survive the copy to a different depth)
     fs.cpSync(examplePath, projectPath, { recursive: true });
+    const themePath = path
+      .relative(projectPath, path.join(__dirname, '..', '..', 'theme-default'))
+      .split(path.sep)
+      .join('/');
+    fs.writeFileSync(
+      path.join(projectPath, 'schorm.config.yml'),
+      `scorm_version: '2004-4th'\ntheme: ${themePath}\n`
+    );
 
     execSync(`${CLI_PATH} validate`, { cwd: projectPath, stdio: 'pipe' });
     execSync(`${CLI_PATH} build`, { cwd: projectPath, stdio: 'pipe' });

@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import * as yaml from 'yaml';
 
 const CLI_PATH = path.join(__dirname, '..', '..', 'bin', 'schorm');
-const TEST_DIR = path.join(__dirname, '..', '..', 'test-output');
+const TEST_DIR = path.join(__dirname, '..', '..', 'test-output', 'new-cmd');
 
 describe('schorm new module command', () => {
   beforeEach(() => {

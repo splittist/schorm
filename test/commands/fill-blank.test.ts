@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const TEST_DIR = path.resolve('test-output');
+const TEST_DIR = path.resolve('test-output/fill-blank-cmd');
 const CLI_PATH = path.resolve('bin/schorm');
 
 describe('Fill-in-the-Blank Question Tests', () => {

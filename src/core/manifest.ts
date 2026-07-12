@@ -4,8 +4,10 @@
 
 import { create } from 'xmlbuilder2';
 import type { BranchCondition, BranchRoute, Course, Lesson, Module } from './course-model.js';
+import type { GeneratedSequencing } from './scenario-builder.js';
 import type { MediaFile } from './media.js';
 import type { Quiz } from './quiz-model.js';
+import { DEFAULT_PASSING_SCORE } from './quiz-model.js';
 
 export interface ManifestOptions {
   identifier: string;
@@ -124,9 +126,11 @@ export interface SequencingPostcondition {
 export interface Resource {
   identifier: string;
   type: string;
-  href: string;
+  href?: string;
   scormType: string;
   files: string[];
+  /** Identifiers of resources this resource depends on (emitted as <dependency>) */
+  dependencies?: string[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -354,15 +358,23 @@ export function generateManifest(options: ManifestOptions): string {
   const resources = manifest.ele('resources');
 
   for (const resource of options.resources) {
-    const resourceElement = resources.ele('resource', {
+    const attributes: Record<string, string> = {
       identifier: resource.identifier,
       type: resource.type,
       'adlcp:scormType': resource.scormType,
-      href: resource.href,
-    });
+    };
+    if (resource.href) {
+      attributes.href = resource.href;
+    }
+    const resourceElement = resources.ele('resource', attributes);
 
     for (const file of resource.files) {
       resourceElement.ele('file', { href: file }).up();
+    }
+
+    // Per IMS content packaging, <dependency> elements follow the <file> list
+    for (const dependency of resource.dependencies ?? []) {
+      resourceElement.ele('dependency', { identifierref: dependency }).up();
     }
 
     resourceElement.up();
@@ -381,7 +393,8 @@ function buildItemSequencing(
   module: Module,
   itemId: string,
   itemIndex: number,
-  _isQuiz: boolean
+  _isQuiz: boolean,
+  passingScore?: number
 ): ItemSequencing | undefined {
   const sequencing = module.sequencing;
   if (!sequencing) {
@@ -506,15 +519,14 @@ function buildItemSequencing(
     // If this item is the gate quiz, it needs to write to the global objective
     if (itemId === gateQuizId) {
       const globalObjectiveId = `${module.id}-gate-passed`;
-      // Use the default SCORM passing score (0.8 = 80%)
-      // This matches the default in schorm-runtime.js SchormQuiz.DEFAULT_PASSING_SCORE
-      const DEFAULT_PASSING_SCORE = 0.8;
+      // Use the quiz's own passing_score so the gate threshold matches what
+      // the runtime reports as a pass
       itemSeq.objectives = [
         {
           objectiveID: `local-${itemId}-passed`,
           isPrimary: true,
           satisfiedByMeasure: true,
-          minNormalizedMeasure: DEFAULT_PASSING_SCORE,
+          minNormalizedMeasure: passingScore ?? DEFAULT_PASSING_SCORE,
           mapInfo: [
             {
               targetObjectiveID: globalObjectiveId,
@@ -585,7 +597,7 @@ function buildItemSequencing(
  */
 function buildModuleSequencing(
   module: Module,
-  generatedSequencing?: any
+  generatedSequencing?: GeneratedSequencing
 ): OrganizationSequencing | undefined {
   // If scenario module with generated sequencing, use that control mode
   if (generatedSequencing?.controlMode) {
@@ -656,7 +668,7 @@ export function buildManifestFromCourse(
     const moduleItems: OrganizationItem[] = [];
 
     // Check if this is a scenario module with generated sequencing
-    const generatedSequencing = (module as any)._generatedSequencing;
+    const generatedSequencing = module.generatedSequencing;
 
     if (generatedSequencing) {
       // Use pre-generated items with sequencing from scenario builder
@@ -689,7 +701,7 @@ export function buildManifestFromCourse(
             sequencing: itemSequencing,
           });
         } else if (quiz) {
-          const itemSequencing = buildItemSequencing(module, itemId, i, true);
+          const itemSequencing = buildItemSequencing(module, itemId, i, true, quiz.passing_score);
           moduleItems.push({
             identifier: `ITEM-${itemId}`,
             title: quiz.title,
@@ -711,19 +723,44 @@ export function buildManifestFromCourse(
 
   // Build resources
   const resources: Resource[] = [];
-  const commonFiles = ['assets/schorm-runtime.js', 'assets/styles.css'];
+
+  // Shared theme assets live in one asset resource that every SCO references
+  // via <dependency>, per IMS content packaging
+  const COMMON_ASSETS_ID = 'RES-common-assets';
+  resources.push({
+    identifier: COMMON_ASSETS_ID,
+    type: 'webcontent',
+    scormType: 'asset',
+    files: ['assets/schorm-runtime.js', 'assets/styles.css'],
+  });
+
+  // Media paths actually copied into the package, and which of them get
+  // claimed by the lesson that uses them. MediaItem.src is normalized to the
+  // same in-package "media/..." form as MediaFile paths.
+  const packagedMedia = new Set(mediaFiles.map((f) => `media/${f.relativePath}`));
+  const claimedMedia = new Set<string>();
 
   // Add index.html as a resource (not a SCO, just webcontent)
-  resources.push({
+  const indexResource: Resource = {
     identifier: 'RES-index',
     type: 'webcontent',
     scormType: 'asset',
     href: 'index.html',
-    files: ['index.html', ...commonFiles],
-  });
+    files: ['index.html'],
+    dependencies: [COMMON_ASSETS_ID],
+  };
+  resources.push(indexResource);
 
   for (const lesson of lessons) {
-    const files = [`${lesson.id}.html`, ...commonFiles];
+    const files = [`${lesson.id}.html`];
+
+    // Declare the media files this lesson uses on its own resource
+    for (const mediaItem of lesson.media ?? []) {
+      if (packagedMedia.has(mediaItem.src) && !files.includes(mediaItem.src)) {
+        files.push(mediaItem.src);
+        claimedMedia.add(mediaItem.src);
+      }
+    }
 
     resources.push({
       identifier: `RES-${lesson.id}`,
@@ -731,29 +768,27 @@ export function buildManifestFromCourse(
       scormType: 'sco',
       href: `${lesson.id}.html`,
       files,
+      dependencies: [COMMON_ASSETS_ID],
     });
   }
 
   // Add quiz resources
   for (const quiz of quizzes) {
-    const files = [`${quiz.id}.html`, ...commonFiles];
-
     resources.push({
       identifier: `RES-${quiz.id}`,
       type: 'webcontent',
       scormType: 'sco',
       href: `${quiz.id}.html`,
-      files,
+      files: [`${quiz.id}.html`],
+      dependencies: [COMMON_ASSETS_ID],
     });
   }
 
-  // Add media files to resources
-  for (const mediaFile of mediaFiles) {
-    const mediaPath = `media/${mediaFile.relativePath}`;
-    // We can optionally add media files to existing resources or create separate resources
-    // For now, we'll just ensure they're listed in at least one resource
-    if (resources.length > 0 && !resources[0].files.includes(mediaPath)) {
-      resources[0].files.push(mediaPath);
+  // Media not referenced by any lesson is still packaged - list it once on
+  // the index resource so every shipped file is declared in the manifest
+  for (const mediaPath of packagedMedia) {
+    if (!claimedMedia.has(mediaPath)) {
+      indexResource.files.push(mediaPath);
     }
   }
 

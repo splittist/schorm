@@ -8,6 +8,7 @@ import * as path from 'path';
 import matter from 'gray-matter';
 import MarkdownIt from 'markdown-it';
 import type { ItemSequencing } from './manifest.js';
+import { validateLessonId } from './course-model.js';
 
 export interface ScenarioGraph {
   nodes: Map<string, SceneNode>;
@@ -81,8 +82,30 @@ async function crawlScene(
     throw new Error(`Scenario file ${filename} missing required frontmatter field: id`);
   }
 
+  // Validate the id format here, before it is interpolated into sequencing
+  // objective ids and the scenario page script
+  try {
+    validateLessonId(String(frontmatter.id));
+  } catch (error) {
+    throw new Error(
+      `Scenario file ${filename} has an invalid id "${String(frontmatter.id)}": ` +
+        (error instanceof Error ? error.message : String(error))
+    );
+  }
+
   if (!frontmatter.title) {
     throw new Error(`Scenario file ${filename} missing required frontmatter field: title`);
+  }
+
+  // Validate mastery: it becomes cmi.score.scaled, which must be 0..1
+  if (frontmatter.mastery !== undefined) {
+    const mastery = frontmatter.mastery;
+    if (typeof mastery !== 'number' || !Number.isFinite(mastery) || mastery < 0 || mastery > 1) {
+      throw new Error(
+        `Scenario file ${filename} has an invalid mastery value ` +
+          `"${String(mastery)}": must be a number between 0 and 1`
+      );
+    }
   }
 
   // Extract choices from markdown links
@@ -144,18 +167,26 @@ function extractChoices(markdown: string): Choice[] {
  * 1. Source nodes (with choices) need objectives that WRITE to global objectives
  * 2. Target nodes need objectives that READ from global objectives for preconditions
  */
+export interface GeneratedSequencingItem {
+  identifier: string;
+  identifierref: string;
+  title: string;
+  sequencing?: ItemSequencing;
+}
+
+/**
+ * Sequencing data auto-generated from a scenario graph, consumed by the
+ * manifest builder in place of the module's declared items
+ */
+export interface GeneratedSequencing {
+  items: GeneratedSequencingItem[];
+  controlMode: { choice: boolean; flow: boolean };
+}
+
 export function generateSequencingFromGraph(
   graph: ScenarioGraph,
   moduleId: string
-): {
-  items: Array<{
-    identifier: string;
-    identifierref: string;
-    title: string;
-    sequencing?: ItemSequencing;
-  }>;
-  controlMode: { choice: boolean; flow: boolean };
-} {
+): GeneratedSequencing {
   const items: Array<{
     identifier: string;
     identifierref: string;

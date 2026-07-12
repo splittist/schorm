@@ -20,23 +20,54 @@
     api: null,
     isInitialized: false,
     isPreviewMode: false,
+    // True once this session has reported completion (lesson viewed or quiz
+    // submitted); drives the exit-status decision when the learner leaves
+    hasReportedCompletion: false,
 
     /**
-     * Find the SCORM API object by searching the window hierarchy
+     * Find the SCORM API object by searching the window hierarchy.
+     * Searches the parent chain first, then the opener's parent chain -
+     * LMSs may launch SCOs in a popup window, where the API lives on the
+     * opener rather than a parent frame.
      */
     findAPI: function(win) {
+      const api = this.scanParentsForAPI(win);
+      if (api != null) {
+        return api;
+      }
+
+      try {
+        if (win.opener != null && win.opener !== win) {
+          return this.scanParentsForAPI(win.opener);
+        }
+      } catch (e) {
+        // Cross-origin opener - not searchable
+      }
+
+      return null;
+    },
+
+    /**
+     * Walk a window's parent chain looking for the SCORM 2004 API
+     */
+    scanParentsForAPI: function(win) {
       let findAttempts = 0;
       const maxAttempts = 500;
-      
-      while (win.API_1484_11 == null && win.parent != null && win.parent != win) {
-        findAttempts++;
-        if (findAttempts > maxAttempts) {
-          return null;
+
+      try {
+        while (win.API_1484_11 == null && win.parent != null && win.parent != win) {
+          findAttempts++;
+          if (findAttempts > maxAttempts) {
+            return null;
+          }
+          win = win.parent;
         }
-        win = win.parent;
+
+        return win.API_1484_11;
+      } catch (e) {
+        // Cross-origin frame boundary - stop searching this chain
+        return null;
       }
-      
-      return win.API_1484_11;
     },
 
     /**
@@ -137,6 +168,8 @@
         return false;
       }
 
+      this.hasReportedCompletion = true;
+
       if (this.isPreviewMode) {
         console.log('[SCHORM Preview] Marking lesson viewed' + (lessonId ? ', lessonId="' + lessonId + '"' : ''));
         if (lessonId) {
@@ -154,6 +187,31 @@
 
       this.setValue('cmi.completion_status', 'completed');
       return this.commit();
+    },
+
+    /**
+     * Report exit status when the learner leaves the page: 'suspend' when the
+     * SCO hasn't reported completion this session (so the LMS offers resume),
+     * normal exit otherwise. Commits and terminates the session.
+     */
+    setupExitHandler: function() {
+      const self = this;
+      let exitHandled = false;
+
+      const onLeave = function() {
+        if (exitHandled || !self.isInitialized) {
+          return;
+        }
+        exitHandled = true;
+
+        self.setValue('cmi.exit', self.hasReportedCompletion ? '' : 'suspend');
+        self.commit();
+        self.terminate();
+      };
+
+      window.addEventListener('pagehide', onLeave);
+      // Fallback for environments without pagehide
+      window.addEventListener('beforeunload', onLeave);
     },
 
     /**
@@ -229,6 +287,7 @@
 
       // Ensure SCORM is initialized
       SchormRuntime.init();
+      SchormRuntime.hasReportedCompletion = true;
 
       if (SchormRuntime.isPreviewMode) {
         // Preview mode: log and store in localStorage
@@ -453,24 +512,72 @@
     },
 
     /**
-     * Evaluate multiple-response question
+     * Compute a partial-credit score.
+     *
+     * With explicit params (scoring.partial):
+     *   raw = perCorrect * correctCount - penaltyPerIncorrect * incorrectCount
+     *   (defaults: perCorrect = points/totalCorrect, penaltyPerIncorrect = 0)
+     * Without params: proportional, matching the fill-blank behavior.
+     * The result is clamped to [minScore (default 0), points] and rounded to
+     * 2 decimals to keep cmi.score.raw tidy.
+     *
+     * @param {Object|undefined} scoring - the question's scoring config
+     * @param {number} correctCount - correct selections/pairs
+     * @param {number} incorrectCount - incorrect (penalizable) selections
+     * @param {number} totalCorrect - size of the full correct set
+     * @param {number} points - the question's maximum points
+     * @returns {number} the partial score
+     */
+    applyPartialScoring: function(scoring, correctCount, incorrectCount, totalCorrect, points) {
+      const partial = (scoring && scoring.partial) || {};
+
+      const perCorrect = (typeof partial.perCorrect === 'number')
+        ? partial.perCorrect
+        : (totalCorrect > 0 ? points / totalCorrect : 0);
+      const penalty = (typeof partial.penaltyPerIncorrect === 'number')
+        ? partial.penaltyPerIncorrect
+        : 0;
+      const minScore = (typeof partial.minScore === 'number') ? partial.minScore : 0;
+
+      const raw = perCorrect * correctCount - penalty * incorrectCount;
+      const clamped = Math.max(minScore, Math.min(points, raw));
+      return Math.round(clamped * 100) / 100;
+    },
+
+    /**
+     * Evaluate multiple-response question.
+     * All-or-nothing by default; scoring.mode 'partial' awards credit per
+     * correct selection with an optional penalty per incorrect selection.
      */
     evaluateMultipleResponse: function(question, userAnswer, points) {
       if (!Array.isArray(userAnswer)) {
         return { correct: false, score: 0, maxScore: points };
       }
 
-      // Sort both arrays for comparison
-      const userSet = userAnswer.slice().sort();
-      const correctSet = question.correct.slice().sort();
-      
-      // Check if arrays are equal
-      const correct = userSet.length === correctSet.length &&
-                      userSet.every((val, index) => val === correctSet[index]);
-      
+      const correctSet = question.correct;
+      const correctCount = userAnswer.filter(function(value) {
+        return correctSet.indexOf(value) !== -1;
+      }).length;
+      const incorrectCount = userAnswer.length - correctCount;
+      const fullyCorrect = correctCount === correctSet.length && incorrectCount === 0;
+
+      if (question.scoring && question.scoring.mode === 'partial') {
+        return {
+          correct: fullyCorrect,
+          score: this.applyPartialScoring(
+            question.scoring,
+            correctCount,
+            incorrectCount,
+            correctSet.length,
+            points
+          ),
+          maxScore: points
+        };
+      }
+
       return {
-        correct: correct,
-        score: correct ? points : 0,
+        correct: fullyCorrect,
+        score: fullyCorrect ? points : 0,
         maxScore: points
       };
     },
@@ -515,7 +622,10 @@
     },
 
     /**
-     * Evaluate matching question
+     * Evaluate matching question.
+     * All-or-nothing by default; scoring.mode 'partial' awards credit per
+     * correctly matched pair. Unanswered premises earn nothing but are not
+     * penalized; wrong (non-empty) matches count as incorrect.
      */
     evaluateMatching: function(question, userAnswer, points) {
       if (typeof userAnswer !== 'object' || userAnswer === null) {
@@ -523,16 +633,34 @@
       }
 
       const correctPairs = question.correct_pairs;
-      let allCorrect = true;
+      let correctCount = 0;
+      let incorrectCount = 0;
 
       for (let i = 0; i < correctPairs.length; i++) {
         const pair = correctPairs[i];
         const userResponse = userAnswer[pair.premise];
-        
-        if (userResponse !== pair.response) {
-          allCorrect = false;
-          break;
+
+        if (userResponse === pair.response) {
+          correctCount++;
+        } else if (userResponse) {
+          incorrectCount++;
         }
+      }
+
+      const allCorrect = correctCount === correctPairs.length;
+
+      if (question.scoring && question.scoring.mode === 'partial') {
+        return {
+          correct: allCorrect,
+          score: this.applyPartialScoring(
+            question.scoring,
+            correctCount,
+            incorrectCount,
+            correctPairs.length,
+            points
+          ),
+          maxScore: points
+        };
       }
 
       return {
@@ -726,6 +854,120 @@
     },
 
     /**
+     * Persist the current quiz state to cmi.suspend_data so a suspended
+     * attempt can be resumed. Shape: { answers: {...}, result?: {...} }
+     * (suspend_data is per-SCO, so this never collides with scenario state).
+     *
+     * @param {Object} answers - map of question id to answer (collect shape)
+     * @param {Object|null} result - QuizResult once submitted, else null
+     */
+    saveQuizState: function(answers, result) {
+      try {
+        const state = { answers: answers || {} };
+        if (result) {
+          state.result = {
+            totalScore: result.totalScore,
+            maxScore: result.maxScore,
+            scaledScore: result.scaledScore,
+            passed: result.passed
+          };
+        }
+        SchormRuntime.setValue('cmi.suspend_data', JSON.stringify(state));
+        SchormRuntime.commit();
+      } catch (e) {
+        console.warn('schorm: Failed to save quiz state', e);
+      }
+    },
+
+    /**
+     * Load a previously suspended quiz state from cmi.suspend_data.
+     * @returns {Object|null} { answers, result? } or null when none exists
+     */
+    loadSavedQuizState: function() {
+      try {
+        const raw = SchormRuntime.getValue('cmi.suspend_data');
+        if (!raw) {
+          return null;
+        }
+        const state = JSON.parse(raw);
+        if (state && typeof state === 'object' && state.answers) {
+          return state;
+        }
+      } catch (e) {
+        console.warn('schorm: Failed to load saved quiz state', e);
+      }
+      return null;
+    },
+
+    /**
+     * Restore answers into the quiz DOM - the inverse of
+     * collectUserAnswersFromDom.
+     * @param {Object} answers - map of question id to answer
+     */
+    restoreAnswers: function(answers) {
+      if (!answers || typeof answers !== 'object') {
+        return;
+      }
+
+      const questions = document.querySelectorAll('.question');
+
+      questions.forEach(function(questionElement) {
+        const questionId = questionElement.dataset.questionId;
+        const questionType = questionElement.dataset.questionType;
+        const saved = answers[questionId];
+
+        if (saved === undefined) {
+          return;
+        }
+
+        switch (questionType) {
+          case 'single-choice':
+          case 'true-false': {
+            const radio = questionElement.querySelector(
+              'input[type="radio"][value="' + saved + '"]'
+            );
+            if (radio) {
+              radio.checked = true;
+            }
+            break;
+          }
+
+          case 'multiple-response': {
+            if (Array.isArray(saved)) {
+              const checkboxes = questionElement.querySelectorAll('input[type="checkbox"]');
+              checkboxes.forEach(function(checkbox) {
+                checkbox.checked = saved.indexOf(checkbox.value) !== -1;
+              });
+            }
+            break;
+          }
+
+          case 'fill-blank': {
+            const inputs = questionElement.querySelectorAll('.fill-blank-input');
+            inputs.forEach(function(input) {
+              const value = saved[input.dataset.blankId];
+              if (typeof value === 'string') {
+                input.value = value;
+              }
+            });
+            break;
+          }
+
+          case 'matching': {
+            const selects = questionElement.querySelectorAll('.matching-select');
+            selects.forEach(function(select) {
+              const value = saved[select.dataset.premiseId];
+              if (typeof value === 'string') {
+                select.value = value;
+              }
+            });
+            break;
+          }
+        }
+      });
+    },
+
+    /**
      * Display quiz results in the UI
      * @param {Object} result - QuizResult object
      */
@@ -772,6 +1014,35 @@
         return;
       }
 
+      // Resume a suspended attempt: restore answers, and if the quiz was
+      // already submitted, re-show the results with submission locked
+      SchormRuntime.init();
+      const savedState = SchormQuiz.loadSavedQuizState();
+      if (savedState) {
+        if (SchormRuntime.isPreviewMode) {
+          console.log('[SCHORM Preview] Resuming saved quiz state:', savedState);
+        }
+        SchormQuiz.restoreAnswers(savedState.answers);
+        if (savedState.result) {
+          SchormRuntime.hasReportedCompletion = true;
+          SchormQuiz.displayResults(savedState.result);
+          submitButton.disabled = true;
+        }
+      }
+
+      // Persist answers as they change so leaving mid-quiz can resume.
+      // 'change' fires on selection for radios/checkboxes/selects and on
+      // blur for text inputs
+      const quizForm = document.getElementById('quiz-form');
+      if (quizForm) {
+        quizForm.addEventListener('change', function() {
+          if (submitButton.disabled) {
+            return;
+          }
+          SchormQuiz.saveQuizState(SchormQuiz.collectUserAnswersFromDom(), null);
+        });
+      }
+
       submitButton.addEventListener('click', function(e) {
         e.preventDefault();
 
@@ -811,6 +1082,9 @@
 
         // Submit to SCORM/localStorage
         SchormQuiz.submitQuizResult(quizModel.id, result);
+
+        // Persist the submitted state so re-entry shows the results
+        SchormQuiz.saveQuizState(userAnswers, result);
 
         // Display results
         SchormQuiz.displayResults(result);
@@ -1060,11 +1334,13 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       SchormRuntime.init();
+      SchormRuntime.setupExitHandler();
       SchormQuiz.initQuizSubmit();
       SchormMedia.initMediaCompletionTracking();
     });
   } else {
     SchormRuntime.init();
+    SchormRuntime.setupExitHandler();
     SchormQuiz.initQuizSubmit();
     SchormMedia.initMediaCompletionTracking();
   }

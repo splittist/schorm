@@ -100,6 +100,12 @@ describe('Quiz Scoring Logic (Runtime)', () => {
       expect(runtimeCode).toContain('cmi.completion_status');
     });
 
+    it('should search the opener chain for popup-launched SCOs', () => {
+      expect(runtimeCode).toContain('scanParentsForAPI: function(win)');
+      expect(runtimeCode).toContain('win.opener != null');
+      expect(runtimeCode).toContain('this.scanParentsForAPI(win.opener)');
+    });
+
     it('should set passed/failed based on result', () => {
       expect(runtimeCode).toContain('passed');
       expect(runtimeCode).toContain('failed');
@@ -332,6 +338,30 @@ describe('Quiz Scoring Logic (Runtime)', () => {
 
     it('should mark result as correct or incorrect', () => {
       expect(runtimeCode).toContain("q.correct ? 'correct' : 'incorrect'");
+    });
+  });
+
+  describe('Suspend/Resume Support', () => {
+    it('should save and load quiz state via cmi.suspend_data', () => {
+      expect(runtimeCode).toContain('saveQuizState: function(answers, result)');
+      expect(runtimeCode).toContain('loadSavedQuizState: function()');
+      expect(runtimeCode).toContain("SchormRuntime.setValue('cmi.suspend_data'");
+      expect(runtimeCode).toContain("SchormRuntime.getValue('cmi.suspend_data')");
+    });
+
+    it('should restore answers into the DOM', () => {
+      expect(runtimeCode).toContain('restoreAnswers: function(answers)');
+    });
+
+    it('should report exit status and terminate on page leave', () => {
+      expect(runtimeCode).toContain('setupExitHandler: function()');
+      expect(runtimeCode).toContain("setValue('cmi.exit'");
+      expect(runtimeCode).toContain("addEventListener('pagehide'");
+    });
+
+    it('should support partial-credit scoring config', () => {
+      expect(runtimeCode).toContain('applyPartialScoring: function(');
+      expect(runtimeCode).toContain("question.scoring.mode === 'partial'");
     });
   });
 });

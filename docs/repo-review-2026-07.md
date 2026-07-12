@@ -97,31 +97,34 @@ and verified to stay within the served directory (403 otherwise).
   SCORM-mapped type, learner_response and correct_responses patterns, result,
   weighting, timestamp), appended after any existing interactions via
   `cmi.interactions._count`.
-- **No suspend/resume or bookmarking outside scenario mode.** Only
-  `scenario.html` sets `cmi.location`/`cmi.suspend_data`. Lessons and quizzes
-  have no re-entry handling (`cmi.entry`/`cmi.exit`), and quizzes don't restore
-  prior answers.
-- **`findAPI` never checks `window.opener`** (`theme-default/assets/schorm-runtime.js`).
-  LMSs that launch SCOs in a popup window won't be found; the SCO silently falls
-  into preview mode and reports nothing. Walk the opener chain as well as parents.
-- **Client-side answer keys / score integrity.** The full quiz object — including
-  `correct`, `correct_answers`, and `correct_pairs` — is embedded in the page
-  (`quiz.html` `jsonStringify`, plus `data-correct-*` attributes in partials), and
-  the client writes `cmi.score.*` directly. This is a common SCORM shortcut, but
-  it should be documented as an explicit integrity limitation: any learner can
-  read the answers from source or set an arbitrary score.
+- ~~**No suspend/resume or bookmarking outside scenario mode.**~~ **Done
+  (July 2026):** every SCO now reports `cmi.exit` ('suspend' before
+  completion, normal after) and terminates on page leave; quizzes persist
+  answers to `cmi.suspend_data` as they change and restore them on re-entry,
+  re-displaying results with submission locked after a submitted attempt.
+  The preview mock persists per-SCO state in localStorage so resume works
+  by reloading the page.
+- ~~**`findAPI` never checks `window.opener`.**~~ **Done (July 2026):** after
+  exhausting the parent chain the runtime now searches the opener's parent
+  chain (cross-origin guarded), so popup-launched SCOs find the API.
+- ~~**Client-side answer keys / score integrity.**~~ **Documented (July 2026):**
+  the limitation is now stated explicitly in `docs/runtime-behavior.md`
+  ("not suitable for high-stakes assessment"). Server-side scoring remains
+  out of scope for a static-site generator.
 
 ### Manifest correctness
 
-- **Media files are not associated with the SCO resources that use them.**
-  `src/core/manifest.ts` dumps every media file into the first (index) resource;
-  each lesson/quiz `<resource>` lists only its own HTML plus the two common asset
-  files. IMS content packaging expects a resource to enumerate its dependent
-  files (or reference a shared asset resource via `<dependency>`).
-- **`scorm_version` config is inert.** It is read, defaulted, and logged, but the
-  manifest hardcodes `schemaversion` "2004 4th Edition". Either implement the
-  other editions (and eventually SCORM 1.2 export) or reject unsupported values.
-- **No XSD validation of generated manifests** — see Testing below.
+- ~~**Media files are not associated with the SCO resources that use them.**~~
+  **Done (July 2026):** each lesson resource lists the media its content uses,
+  shared theme assets moved to a `RES-common-assets` asset resource referenced
+  from every SCO via `<dependency>`, and unreferenced media stays declared once
+  on the index resource. The gate objective's `minNormalizedMeasure` now also
+  uses the gate quiz's own `passing_score` instead of a hardcoded 0.8.
+- ~~**`scorm_version` config is inert.**~~ **Done (July 2026):** `schorm build`
+  and `schorm init` now reject values other than `2004-4th` with a clear
+  message instead of silently producing a mislabeled package. SCORM 1.2 export
+  remains a scope idea.
+- **XSD validation of generated manifests** — partially done; see Testing below.
 
 ### Determinism
 
@@ -133,33 +136,36 @@ and verified to stay within the served directory (403 otherwise).
 
 - **XSS surface with untrusted content.** Templates use triple-stache
   (`{{{question.prompt}}}`, `{{{text}}}`, `{{{lesson.content}}}`) and markdown-it
-  runs with `html: true`. Fine for trusted authors, but the README explicitly
-  targets LLM-generated content, which makes this a stored-XSS vector inside the
-  LMS. Recommend sanitizing rendered HTML (or making `html: true` opt-in) and
-  documenting the trust model.
-- **`scenario.html` interpolates unvalidated values into inline JS** —
-  `masteryScore` comes from frontmatter and is never validated as a number, and
-  scenario scene IDs are not run through `validateLessonId`. A hostile or
-  malformed value yields broken or injectable script.
+  runs with `html: true`. **The trust model is now documented** in
+  `docs/runtime-behavior.md` (content authors are trusted; sanitize LLM output
+  before building). Actual sanitization (or opt-in `html: true`) remains open.
+- ~~**`scenario.html` interpolates unvalidated values into inline JS.**~~
+  **Done (July 2026):** `mastery` is validated as a 0–1 number and scene ids
+  through `validateLessonId` at crawl time, and the template's inline-JS
+  interpolations are JSON-encoded (defense in depth).
 - **`init`/`new` do no path-component sanitization** before creating directories
   from the project name / module segment (IDs are validated later, after paths
   are resolved).
 
 ### Testing
 
-- **No XSD conformance testing of `imsmanifest.xml`.** Manifest assertions are
-  substring checks only; a manifest violating the IMS content-packaging or
-  sequencing schemas would pass. For a SCORM generator this is the single biggest
-  test gap — vendor the ADL/IMS XSDs and validate generated manifests in the
-  packaging tests.
-- **No coverage measurement** (`@vitest/coverage-v8` not configured), so
-  untested modules are invisible. `src/core/config.ts` has zero direct coverage
-  and `src/cli.ts` routing has no dedicated test.
-- The E2E suite is strong (real CLI invocations, real HTTP preview requests, full
-  build→package zips) but slow: each `it` shells out to `init`/`new`/`build` in
-  fresh processes, and file execution is now serialized (see P1.9) to avoid the
-  shared `test-output/` collisions. Moving to per-file temp directories would
-  allow re-enabling parallelism and cut runtime substantially.
+- **XSD conformance testing of `imsmanifest.xml`** — partially done (July
+  2026): `test/core/manifest-conformance.test.ts` checks well-formedness via
+  xmllint plus reference integrity (identifierref resolution, file/dependency
+  shape, single declaration per media file), and automatically upgrades to
+  full `xmllint --schema` validation when the SCORM 2004 XSDs are placed in
+  `test/fixtures/xsd/` (see its README — the schema hosts are unreachable from
+  the sandboxed dev environment, so the XSDs still need to be vendored by a
+  maintainer with network access).
+- ~~**No coverage measurement.**~~ **Done (July 2026):** `npm run
+  test:coverage` (@vitest/coverage-v8). In-process baseline: 53% statements
+  overall — command modules read 0% because the E2E tests exercise them in
+  subprocesses, which V8 coverage cannot see; core modules sit at ~63%.
+  Tests are also now typechecked (`npm run typecheck`, run in CI), which
+  they never were before.
+- ~~The E2E suite is slow and serialized.~~ **Done (July 2026):** every test
+  file owns a unique directory, so vitest file parallelism is back on — full
+  suite ~150s → ~48s.
 
 ### Schemas
 
@@ -179,60 +185,70 @@ and verified to stay within the served directory (403 otherwise).
 
 ### Documentation
 
-- **Undocumented CLI flags**: `init --title/--scorm-version/--force`,
-  `build -o/--config/--json`, `package --out/--name/--no-validate`,
-  `validate --json/--debug-validation`. Only `preview --open` is documented.
-- **`schorm.config.yml` fields are never listed anywhere** (only `scorm_version`
-  and `theme` are consumed), and course `version`/`metadata.*` support is
-  undocumented.
-- **No theme customization guide** — `docs/architecture.md` describes theme
-  structure but nothing explains creating a theme or overriding partials/runtime.
-- **`scoring: partial` is advertised but inert.** Examples and the JSON schema
-  show `scoring: mode: partial` for multiple-response/matching, but the runtime
-  is exact-match / all-or-nothing ("no partial credit in v0.3"). Mark it clearly
-  in the examples and schema until implemented.
-- **`docs/architecture.md` has model drift** — it describes `registerInitCommand()`
-  functions, `Course.scormVersion`, `Quiz.type`, and `MediaItem.alt`, none of
-  which match the code.
-- **Markdown-image media tracking is undocumented** — `![](…)` images are
-  auto-tracked as media items, and there is no `{{image}}` shortcode even though
-  the media attribute type includes `'image'`.
+**Done (July 2026)** — the documentation suite now covers the previously
+undocumented surface, written after the behavior-settling fixes so it should
+not need rewriting as remaining features land (each future feature maps to a
+single small subsection):
+
+- ~~Undocumented CLI flags~~ → `docs/cli-reference.md` (every command, flag,
+  exit code, and `--json` output shape).
+- ~~`schorm.config.yml` and course `version`/`metadata` undocumented~~ →
+  `docs/configuration-and-authoring.md`, which links to the JSON schemas as
+  the authoritative field spec instead of duplicating them.
+- ~~No theme customization guide~~ → `docs/theme-guide.md` (anatomy, template
+  contexts, and the template/runtime contracts a custom theme must keep).
+- ~~`scoring: partial` advertised but inert~~ → marked "not yet implemented"
+  in the quiz schema description, the authoring reference, and
+  `docs/runtime-behavior.md`.
+- ~~`docs/architecture.md` model drift~~ → corrected against the code
+  (command registration, Course/Quiz/MediaItem shapes, theme tree, data-model
+  element list).
+- ~~Markdown-image media tracking undocumented~~ → covered in the authoring
+  reference's media section.
 
 ### Scope ideas
 
-- Implement the planned `schorm lint`, `schorm schema`, and `schorm graph`
-  commands (the README already advertises them as planned).
-- SCORM 1.2 export — the config knob already exists.
-- Partial-credit scoring for multiple-response and matching.
-- **A full end-to-end example course** (module + lesson + quiz + media). Today
-  `examples/` has only standalone quiz files and a scenario-only course; a new
-  user has no runnable "linear module" reference.
-- Repo hygiene: CHANGELOG, CONTRIBUTING, issue/PR templates, Dependabot config,
-  and release automation (`prepublishOnly` runs only `build` — a broken test
-  suite can publish).
+- Implement the planned `schorm lint` and `schorm graph` commands
+  (`schorm schema` shipped July 2026).
+- SCORM 1.2 export (the config knob now rejects it explicitly until built).
+- ~~Partial-credit scoring for multiple-response and matching.~~ **Done
+  (July 2026):** `scoring.mode: partial` is honored with
+  perCorrect/penaltyPerIncorrect/minScore semantics (proportional when
+  params are omitted), verified by executable runtime tests.
+- ~~**A full end-to-end example course.**~~ **Done (July 2026):**
+  `examples/linear-course/` — lessons with media, a mixed-type gating quiz,
+  linear sequencing, and a walkthrough README; validated against the schemas
+  and built end-to-end in the test suite.
+- ~~Repo hygiene.~~ **Done (July 2026):** CHANGELOG.md (Keep-a-Changelog),
+  CONTRIBUTING.md, Dependabot (npm + actions, weekly), bug/feature issue
+  forms, a PR template, and `prepublishOnly` now runs
+  lint + typecheck + build + test.
 
 ### Code quality
 
-- `src/commands/build.ts` is a ~580-line monolith mixing orchestration, logging,
-  rendering, and error mapping; the media-placeholder replacement rebuilds a
-  `RegExp` per media item per lesson.
-- Untyped side channels: `(module as any)._generatedSequencing`,
-  `(lesson as any).isScenario/isEnding/masteryScore/sceneChoices`. These deserve
-  real types (extend the models or use a dedicated scenario type).
-- Duplicated logic: DFS cycle detection exists in both `course-model.ts` and
-  `scenario-builder.ts` (the latter — `detectCycles` — is exported but never
-  called, so scenario navigation cycles are never actually reported);
-  `escapeHtml`/`escapeRegex` are re-implemented locally in `scenario-builder.ts`.
-- Hardcoded constants: passing score `0.8` duplicated between `manifest.ts` and
-  `schorm-runtime.js` (with a keep-in-sync comment); scenario pass threshold
-  `0.6` inline in `scenario.html`.
-- `validateModuleSequencing` reports author-facing warnings via `console.warn`
-  instead of the structured `ValidationResult.warnings` channel, so they never
-  appear in `--json` output.
-- `media.ts` `mimeType` is a stubbed `''` with a TODO; `validateConfig` in
-  `config.ts` is never called.
-- Tooling: ESLint is on the legacy `.eslintrc.cjs` format with ESLint 8;
-  `parserOptions.project` is set but the type-checked rulesets aren't enabled
-  (paying the cost of type info without the stronger rules). `tsconfig.json`
-  excludes test files from `tsc`, so tests are only type-checked when Vitest
-  runs them — a `typecheck` script covering tests would close that.
+- ~~`src/commands/build.ts` monolith.~~ **Done (July 2026):** split into
+  build-scenario / build-templates / build-render core modules; both example
+  courses build byte-identically across the refactor.
+- ~~Untyped side channels.~~ **Done (July 2026):** `Module.generatedSequencing`
+  and `Lesson.isEnding/masteryScore` are typed optional fields; all `as any`
+  cast sites removed (the never-read `isScenario`/`sceneChoices` writes were
+  dropped).
+- Duplicated logic: DFS cycle detection still exists in both
+  `course-model.ts` (throws, route graphs) and `scenario-builder.ts`
+  (collects, scene graphs) — different data models and contracts, left as is
+  deliberately. `escapeHtml`/`escapeRegex` in `scenario-builder.ts` are the
+  only definitions in src, so there is nothing to deduplicate against.
+- ~~Hardcoded constants.~~ **Done (July 2026):** `DEFAULT_PASSING_SCORE` is
+  exported from quiz-model and used by the manifest; a drift test pins the
+  runtime's copy and the schema default to it. The scenario template's
+  0.6/0.7/0.4 thresholds are documented as theme-local presentation
+  constants.
+- ~~`validateModuleSequencing` console.warn.~~ **Done (July 2026):** surfaced
+  as structured warnings in `validate --json` and `build --json`.
+- ~~`media.ts` mimeType stub.~~ **Done (July 2026):** filled from the shared
+  `src/core/mime.ts` map (also used by the preview server).
+  `validateConfig` has been wired into `loadConfig` since tranche 2.
+- Tooling: ESLint remains on the legacy `.eslintrc.cjs` format with ESLint 8
+  and without the type-checked rulesets — an ESLint 9 flat-config migration
+  is the remaining modernization item. (Tests are now typechecked via
+  `npm run typecheck`; done July 2026.)

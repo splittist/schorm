@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import * as yaml from 'yaml';
 
 const CLI_PATH = path.join(__dirname, '..', '..', 'bin', 'schorm');
-const TEST_DIR = path.join(__dirname, '..', '..', 'test-output');
+const TEST_DIR = path.join(__dirname, '..', '..', 'test-output', 'validate-cmd');
 
 describe('schorm validate command', () => {
   beforeEach(() => {
@@ -303,6 +303,59 @@ module: m1
       expect(firstError).toHaveProperty('message');
       expect(firstError).toHaveProperty('severity');
     }
+  });
+
+  it('should surface scenario-mode config warnings in --json output', () => {
+    const projectName = 'scenario-warnings';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    execSync(`${CLI_PATH} init ${projectName}`, {
+      cwd: TEST_DIR,
+      stdio: 'pipe',
+    });
+
+    // A scenario scene, plus a declared items[] entry that scenario mode
+    // will ignore - previously this only produced a console.warn
+    const sceneDir = path.join(projectPath, 'content', 'story');
+    fs.mkdirSync(sceneDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(sceneDir, 'start.md'),
+      `---
+id: start
+title: "Start"
+module: story
+ending: true
+---
+
+# Start
+`
+    );
+
+    const courseConfig = {
+      id: projectName,
+      title: projectName,
+      modules: [
+        {
+          id: 'story',
+          title: 'Story',
+          items: ['start'],
+          sequencing: {
+            mode: 'scenario',
+            scenario: { start: 'start.md' },
+          },
+        },
+      ],
+    };
+    fs.writeFileSync(path.join(projectPath, 'course.yml'), yaml.stringify(courseConfig));
+
+    const output = execSync(`${CLI_PATH} validate --json`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    const result = JSON.parse(output);
+    const codes = result.warnings.map((w: { code: string }) => w.code);
+    expect(codes).toContain('W-SCENARIO-ITEMS-IGNORED');
   });
 
   it('should warn about unreferenced SCOs', () => {

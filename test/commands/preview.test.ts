@@ -102,6 +102,32 @@ describe('schorm preview server', () => {
     expect(response).toContain('[SCHORM Preview] Mock SCORM API ready');
   });
 
+  it('should persist mock SCORM state per SCO so resume works across reloads', async () => {
+    const port = 9883;
+    server = new PreviewServer({
+      port,
+      directory: BUILD_DIR,
+      open: false,
+    });
+
+    await server.start();
+
+    const response = await new Promise<string>((resolve, reject) => {
+      http.get(`http://localhost:${port}/test-lesson.html`, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => resolve(data));
+      }).on('error', reject);
+    });
+
+    // The injected mock seeds its data model from localStorage per page,
+    // persists on SetValue, and answers cmi.entry with 'resume' when
+    // state exists
+    expect(response).toContain("'schorm:scorm:' + window.location.pathname");
+    expect(response).toContain('persistDataModel');
+    expect(response).toContain("isResumedSession ? 'resume' : 'ab-initio'");
+  });
+
   it('should serve CSS files without modification', async () => {
     const port = 9878;
     server = new PreviewServer({

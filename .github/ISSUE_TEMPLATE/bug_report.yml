@@ -1,0 +1,33 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: >
+        Smallest course that shows the problem - ideally the relevant
+        course.yml/lesson/quiz snippet plus the schorm command you ran.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: schorm version
+      description: Output of `schorm --version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version, OS, and (for playback issues) the LMS or `schorm preview`

@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=../../../schemas/quiz-schema.json
+id: checkpoint
+module: getting-started
+title: "Checkpoint Quiz"
+passing_score: 0.7
+
+questions:
+  - id: q1
+    type: single-choice
+    prompt: "What file defines the structure of a schorm course?"
+    points: 1
+    options:
+      - id: a
+        text: "course.yml"
+        feedback: "Right - modules and their items live here."
+      - id: b
+        text: "index.html"
+      - id: c
+        text: "manifest.json"
+    correct: a
+    feedback:
+      correct: "Correct!"
+      incorrect: "It's course.yml - the course model at the project root."
+
+  - id: q2
+    type: true-false
+    prompt: "schorm packages report per-question results to the LMS via SCORM interactions."
+    points: 1
+    correct: true
+
+  - id: q3
+    type: fill-blank
+    prompt: "Complete the command."
+    text: "To create an uploadable ZIP you run schorm [[command]]."
+    points: 1
+    blanks:
+      - id: command
+        correct_answers:
+          - package
+        case_sensitive: false
+        trim_whitespace: true
+
+  - id: q4
+    type: matching
+    prompt: "Match each file type to its role."
+    points: 2
+    premises:
+      - id: markdown
+        text: "Markdown file"
+      - id: yaml
+        text: "Quiz YAML file"
+    responses:
+      - id: lesson
+        text: "A lesson"
+      - id: quiz
+        text: "A quiz"
+      - id: theme
+        text: "A theme"
+    correct_pairs:
+      - premise: markdown
+        response: lesson
+      - premise: yaml
+        response: quiz

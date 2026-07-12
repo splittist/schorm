@@ -2,6 +2,15 @@
  * Quiz data model and question type definitions
  */
 
+/**
+ * Default passing score (0-1 scale) applied when a quiz omits
+ * passing_score. The runtime keeps its own copy
+ * (theme-default/assets/schorm-runtime.js SchormQuiz.DEFAULT_PASSING_SCORE)
+ * because shipped JS cannot import from the build - a drift test asserts
+ * the two stay equal.
+ */
+export const DEFAULT_PASSING_SCORE = 0.8;
+
 // ============================================================================
 // Quiz file structure
 // ============================================================================

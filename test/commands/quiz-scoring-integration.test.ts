@@ -8,7 +8,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const TEST_DIR = path.join(process.cwd(), 'test-output');
+const TEST_DIR = path.join(process.cwd(), 'test-output', 'quiz-scoring-int');
 const CLI_PATH = path.join(process.cwd(), 'bin/schorm');
 
 describe('Quiz Scoring Integration', () => {

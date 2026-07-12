@@ -6,24 +6,13 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
+import { getMimeType } from '../core/mime.js';
 
 export interface PreviewServerOptions {
   port: number;
   directory: string;
   open?: boolean;
 }
-
-const MIME_TYPES: Record<string, string> = {
-  '.html': 'text/html',
-  '.js': 'application/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.xml': 'application/xml',
-};
 
 // Mock SCORM 2004 API that gets injected into HTML pages during preview
 const MOCK_SCORM_API = `
@@ -35,8 +24,30 @@ const MOCK_SCORM_API = `
   
   // Values written via SetValue, so GetValue can echo them back and the
   // collection _count queries (cmi.interactions._count, cmi.objectives._count)
-  // behave like a real LMS
+  // behave like a real LMS. The model persists to localStorage per SCO so
+  // suspend/resume can be exercised in preview: reload the page and
+  // cmi.entry reports 'resume' with the saved values intact.
+  var storageKey = 'schorm:scorm:' + window.location.pathname;
   var dataModel = {};
+  var isResumedSession = false;
+
+  try {
+    var persisted = localStorage.getItem(storageKey);
+    if (persisted) {
+      dataModel = JSON.parse(persisted) || {};
+      isResumedSession = Object.keys(dataModel).length > 0;
+    }
+  } catch (e) {
+    console.warn('[SCHORM Preview] Could not read persisted SCORM state', e);
+  }
+
+  function persistDataModel() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(dataModel));
+    } catch (e) {
+      console.warn('[SCHORM Preview] Could not persist SCORM state', e);
+    }
+  }
 
   function collectionCount(collection) {
     var maxIndex = -1;
@@ -70,7 +81,7 @@ const MOCK_SCORM_API = `
       // Return empty string for most values, except specific cases
       if (element === 'cmi.completion_status') return 'unknown';
       if (element === 'cmi.success_status') return 'unknown';
-      if (element === 'cmi.entry') return 'ab-initio';
+      if (element === 'cmi.entry') return isResumedSession ? 'resume' : 'ab-initio';
       if (element === 'cmi.mode') return 'normal';
       return '';
     },
@@ -78,6 +89,7 @@ const MOCK_SCORM_API = `
     SetValue: function(element, value) {
       console.log('[SCORM API] SetValue called:', element, '=', value);
       dataModel[element] = String(value);
+      persistDataModel();
       return 'true';
     },
     
@@ -216,7 +228,7 @@ export class PreviewServer {
     }
 
     const ext = path.extname(filePath);
-    const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+    const mimeType = getMimeType(ext);
 
     // For HTML files, inject the mock SCORM API
     if (ext === '.html') {

@@ -319,13 +319,23 @@ npm test        # vitest
 
 ## Contributing
 
-Discussion, issues, and PRs are welcome.
+Discussion, issues, and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup, the CI gates, and the conventions that keep schemas, docs, and
+code in sync. Notable changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 Useful docs:
 
-- `/docs/prd.md` — Product Requirements (draft)
-- `/docs/architecture.md` (draft)
-- `/docs/repo-review-2026-07.md` — repository review and improvement backlog
+- [`docs/cli-reference.md`](docs/cli-reference.md) — every command and flag
+- [`docs/configuration-and-authoring.md`](docs/configuration-and-authoring.md) — `schorm.config.yml`, `course.yml`, lessons, quizzes
+- [`docs/theme-guide.md`](docs/theme-guide.md) — customizing layouts, partials, and styles
+- [`docs/runtime-behavior.md`](docs/runtime-behavior.md) — what gets reported to the LMS, plus the trust model and known limitations
+- [`docs/sequencing-recipes.md`](docs/sequencing-recipes.md) — sequencing and scenario-mode patterns
+- [`docs/errors.md`](docs/errors.md) — build/validation error codes
+- [`schemas/README.md`](schemas/README.md) — JSON schemas for LLM-driven authoring
+- [`examples/linear-course/`](examples/linear-course/) — a complete runnable example course
+- `docs/prd.md` — Product Requirements (draft)
+- `docs/architecture.md` — internal architecture
+- `docs/repo-review-2026-07.md` — repository review and improvement backlog
 
 If adding new commands or core functionality, start with an issue first so the design can be aligned with the overall architecture.
 

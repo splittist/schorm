@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const TEST_DIR = path.resolve('test-output');
+const TEST_DIR = path.resolve('test-output/quiz-partials-cmd');
 const CLI_PATH = path.resolve('bin/schorm');
 
 describe('Quiz Partials Tests', () => {

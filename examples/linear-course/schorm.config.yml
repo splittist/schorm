@@ -1,0 +1,3 @@
+# yaml-language-server: $schema=../../schemas/config-schema.json
+scorm_version: '2004-4th'
+theme: ../../theme-default

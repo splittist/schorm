@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import * as yaml from 'yaml';
 
 const CLI_PATH = path.join(__dirname, '..', '..', 'bin', 'schorm');
-const TEST_DIR = path.join(__dirname, '..', '..', 'test-output');
+const TEST_DIR = path.join(__dirname, '..', '..', 'test-output', 'init-cmd');
 
 describe('schorm init command', () => {
   beforeEach(() => {
@@ -99,12 +99,11 @@ describe('schorm init command', () => {
     expect(courseConfig.title).toBe(customTitle);
   });
 
-  it('should use custom scorm-version when provided', () => {
+  it('should accept a supported scorm-version when provided', () => {
     const projectName = 'custom-scorm-project';
     const projectPath = path.join(TEST_DIR, projectName);
-    const scormVersion = '1.2';
 
-    execSync(`${CLI_PATH} init ${projectName} --scorm-version "${scormVersion}"`, {
+    execSync(`${CLI_PATH} init ${projectName} --scorm-version "2004-4th"`, {
       cwd: TEST_DIR,
       stdio: 'pipe',
     });
@@ -112,7 +111,24 @@ describe('schorm init command', () => {
     const schormConfig = yaml.parse(
       fs.readFileSync(path.join(projectPath, 'schorm.config.yml'), 'utf-8')
     );
-    expect(schormConfig.scorm_version).toBe(scormVersion);
+    expect(schormConfig.scorm_version).toBe('2004-4th');
+  });
+
+  it('should reject unsupported scorm-version values', () => {
+    const projectName = 'unsupported-scorm-project';
+    const projectPath = path.join(TEST_DIR, projectName);
+
+    // Only 2004-4th can currently be generated; accepting other values would
+    // create a project whose every build fails (or a mislabeled package)
+    expect(() => {
+      execSync(`${CLI_PATH} init ${projectName} --scorm-version "1.2"`, {
+        cwd: TEST_DIR,
+        stdio: 'pipe',
+      });
+    }).toThrow(/Unsupported SCORM version "1\.2"/);
+
+    // Nothing should be left behind
+    expect(fs.existsSync(projectPath)).toBe(false);
   });
 
   it('should fail when directory already exists', () => {

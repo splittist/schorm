@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/course-schema.json
+id: linear-course
+version: 1.0.0
+title: Getting Started with schorm
+metadata:
+  author: schorm examples
+  description: A complete linear course - lessons with media, a gating quiz, and a summary unlocked by passing it
+  duration: 15
+
+modules:
+  - id: getting-started
+    title: "Getting Started"
+    items:
+      - welcome
+      - key-concepts
+      - checkpoint
+      - summary
+    sequencing:
+      mode: linear
+      gate:
+        quiz: checkpoint

@@ -52,9 +52,10 @@ schorm/
     layouts/
     partials/
     assets/
+  schemas/          # JSON schemas for quiz/course/lesson/config files
+  examples/
   docs/
-    prd.md
-    architecture.md
+  test/
   bin/
     schorm
   package.json
@@ -71,11 +72,12 @@ Example:
 
 ```
 src/commands/init.ts
+src/commands/new.ts
 src/commands/build.ts
 src/commands/preview.ts
 src/commands/package.ts
 src/commands/validate.ts
-src/commands/new.ts
+src/commands/schema.ts
 ```
 
 CLI Entry Point
@@ -88,8 +90,8 @@ CLI Entry Point
 **Command Responsibilities**
 
 Each command module:
-- exposes a function (e.g., registerInitCommand)
-- adds itself to the CLI program
+- exports a configured Commander instance (e.g., `export const initCommand = new Command('init')...`)
+- is registered in src/cli.ts via `program.addCommand(...)`
 - contains minimal orchestration logic
 - delegates real work to services in src/core
 
@@ -100,11 +102,9 @@ This separation allows commands to remain thin wrappers around the core engine.
 All business logic resides in src/core.
 
 ### 5.1 core/config.ts
-- Loads and validates:
-  - schorm.config.yml
-  - environment overrides
-  - theme config
-- Provides defaults for omitted settings.
+- Loads and validates schorm.config.yml (`loadConfig`/`validateConfig`)
+- Provides defaults for omitted settings (`scorm_version: '2004-4th'`, `theme: 'theme'`)
+- Rejects unsupported `scorm_version` values (only `2004-4th` is generated today)
 
 ### 5.2 core/course-model.ts
 
@@ -221,12 +221,13 @@ This approach ensures:
 - Template rendering happens at build time via media-block partial
 
 ### 5.4 core/templates.ts
-- Loads Handlebars templates from theme
-- Registers helper functions (e.g., eq, json, date)
-- Provides:
-  - renderLesson(context)
-  - renderQuiz(context)
-  - renderPage(context)
+- `TemplateEngine` class wrapping an isolated Handlebars instance
+- Registers helper functions: `eq`, `gt`, `contains`, `uppercase`, `add1`,
+  `jsonStringify`, `parseFillBlanks`
+- `loadPartials(dir)` registers every `.html`/`.hbs` under the theme's
+  partials/ (subdirectories become name prefixes, e.g. `quiz/question`)
+- `render(template, context)` renders a template string; `loadTemplate(path)`
+  reads layout files
 
 ### 5.5 core/media.ts
 - Scans for all referenced media files
@@ -244,9 +245,9 @@ This approach ensures:
   - Optional simple sequencing rules
   - Uses xmlbuilder2 to create canonical XML
 
-## 5.7 core/build.ts
+## 5.7 commands/build.ts
 
-Thin orchestration layer:
+Orchestration layer (lives in src/commands, not src/core):
 - clears/creates build/
 - loads config + course model
 - processes each SCO
@@ -282,16 +283,28 @@ Themes live in:
 theme-default/
   layouts/
     base.html
+    index.html
     lesson.html
     quiz.html
+    scenario.html
   partials/
     header.html
     footer.html
     media-block.html
+    quiz/
+      question.hbs
+      single-choice.hbs
+      multiple-response.hbs
+      true-false.hbs
+      fill-blank.hbs
+      matching.hbs
   assets/
     styles.css
     schorm-runtime.js
 ```
+
+See [theme-guide.md](./theme-guide.md) for template contexts and the
+contracts the build and runtime rely on.
 
 ### 7.1 Layout Files
 
@@ -360,13 +373,15 @@ The runtime is intentionally simple:
 
 schorm implements only the essential subset of SCORM 2004:
 
-### 9.1 Mandatory Data Model Elements
+### 9.1 Data Model Elements Used
 - cmi.completion_status
 - cmi.success_status
-- cmi.score.scaled
-- cmi.location
-- cmi.suspend_data
-- cmi.progress_measure
+- cmi.score.raw / cmi.score.max / cmi.score.scaled
+- cmi.objectives.n.* (quiz-gated sequencing objective)
+- cmi.interactions.n.* (per-question results)
+- cmi.location / cmi.suspend_data (scenario mode bookmarking)
+
+See [runtime-behavior.md](./runtime-behavior.md) for when each is written.
 
 ### 9.2 Sequencing (Minimal)
 
@@ -401,11 +416,12 @@ The schorm package command then zips this directory into a SCORM-compliant packa
 
 ### 11.1 Course Model (simplified)
 
-```ts 
+```ts
 interface Course {
   id: string;
   title: string;
-  scormVersion: string;
+  version?: string;
+  metadata?: CourseMetadata; // author?, description?, duration?, ...
   modules: Module[];
 }
 
@@ -413,10 +429,14 @@ interface Module {
   id: string;
   title: string;
   items: SCORef[];
+  sequencing?: ModuleSequencing; // mode, gate, branches, choices, scenario
 }
 
 type SCORef = string; // e.g., "intro" (lesson/quiz ID without module prefix)
 ```
+
+(The SCORM version is not on the course model - it lives in
+schorm.config.yml.)
 
 ## 11.2 SCO Types
 
@@ -451,23 +471,26 @@ interface LessonFrontmatter {
 }
 
 interface Quiz {
-  type: "quiz";
   id: string;
-  title: string;
   module: string;
+  title: string;
   questions: Question[];
+  passing_score?: number; // 0-1 scale, default 0.8
 }
-``` 
 ```
+
+(Quiz objects carry no `type` discriminator - lessons and quizzes are
+distinguished by which collection they are loaded into. The full question
+type union lives in src/core/quiz-model.ts and schemas/quiz-schema.json.)
 
 ### 11.3 Media Items
 
-```
+```ts
 interface MediaItem {
   id: string;
-  type: "image" | "audio" | "video";
+  type: "audio" | "video" | "image";
   src: string;
-  alt?: string;
+  title?: string;
   poster?: string;
 }
 ```

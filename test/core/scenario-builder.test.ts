@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import MarkdownIt from 'markdown-it';
-import { processScenarioLinks } from '../../src/core/scenario-builder.js';
+import {
+  processScenarioLinks,
+  buildScenarioGraph,
+  detectCycles,
+} from '../../src/core/scenario-builder.js';
 
 describe('Scenario Builder', () => {
   describe('processScenarioLinks', () => {
@@ -152,6 +159,100 @@ describe('Scenario Builder', () => {
       // With typographer enabled, straight quotes become curly quotes
       expect(result).toContain('\u201Cquotes\u201D');
       expect(result).not.toContain('<tags>');
+    });
+  });
+
+  describe('buildScenarioGraph validation', () => {
+    const writeScene = (dir: string, file: string, frontmatter: string, body = '') => {
+      fs.writeFileSync(path.join(dir, file), `---\n${frontmatter}\n---\n\n${body}\n`);
+    };
+
+    let sceneDir: string;
+
+    beforeEach(() => {
+      sceneDir = fs.mkdtempSync(path.join(os.tmpdir(), 'schorm-scenario-'));
+    });
+
+    afterEach(() => {
+      fs.rmSync(sceneDir, { recursive: true, force: true });
+    });
+
+    it('accepts a valid mastery value', async () => {
+      writeScene(sceneDir, 'start.md', 'id: start\ntitle: Start\nmodule: m1', '[Go](end.md)');
+      writeScene(
+        sceneDir,
+        'end.md',
+        'id: the-end\ntitle: End\nmodule: m1\nending: true\nmastery: 0.7'
+      );
+      const graph = await buildScenarioGraph(sceneDir, 'start.md');
+      expect(graph.nodes.get('the-end')?.masteryScore).toBe(0.7);
+    });
+
+    it('rejects mastery outside 0..1', async () => {
+      writeScene(
+        sceneDir,
+        'start.md',
+        'id: start\ntitle: Start\nmodule: m1\nending: true\nmastery: 1.5'
+      );
+      await expect(buildScenarioGraph(sceneDir, 'start.md')).rejects.toThrow(
+        /invalid mastery value "1\.5"/
+      );
+    });
+
+    it('rejects non-numeric mastery', async () => {
+      writeScene(
+        sceneDir,
+        'start.md',
+        'id: start\ntitle: Start\nmodule: m1\nending: true\nmastery: high'
+      );
+      await expect(buildScenarioGraph(sceneDir, 'start.md')).rejects.toThrow(
+        /invalid mastery value "high"/
+      );
+    });
+
+    it('rejects scene ids with invalid characters at crawl time', async () => {
+      writeScene(sceneDir, 'start.md', 'id: "bad id!"\ntitle: Start\nmodule: m1');
+      await expect(buildScenarioGraph(sceneDir, 'start.md')).rejects.toThrow(/invalid id/);
+    });
+  });
+
+  describe('detectCycles', () => {
+    it('reports navigation loops', async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'schorm-cycles-'));
+      try {
+        fs.writeFileSync(
+          path.join(dir, 'a.md'),
+          '---\nid: a\ntitle: A\nmodule: m1\n---\n\n[To B](b.md)\n'
+        );
+        fs.writeFileSync(
+          path.join(dir, 'b.md'),
+          '---\nid: b\ntitle: B\nmodule: m1\n---\n\n[Back to A](a.md)\n'
+        );
+        const graph = await buildScenarioGraph(dir, 'a.md');
+        const cycles = detectCycles(graph);
+        expect(cycles.length).toBeGreaterThan(0);
+        expect(cycles[0]).toContain('Cycle detected');
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('reports no cycles for an acyclic graph', async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'schorm-acyclic-'));
+      try {
+        fs.writeFileSync(
+          path.join(dir, 'a.md'),
+          '---\nid: a\ntitle: A\nmodule: m1\n---\n\n[To B](b.md)\n'
+        );
+        fs.writeFileSync(
+          path.join(dir, 'b.md'),
+          '---\nid: b\ntitle: B\nmodule: m1\nending: true\n---\n\nDone.\n'
+        );
+        const graph = await buildScenarioGraph(dir, 'a.md');
+        expect(detectCycles(graph)).toEqual([]);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 });

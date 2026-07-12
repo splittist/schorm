@@ -35,8 +35,30 @@ const MOCK_SCORM_API = `
   
   // Values written via SetValue, so GetValue can echo them back and the
   // collection _count queries (cmi.interactions._count, cmi.objectives._count)
-  // behave like a real LMS
+  // behave like a real LMS. The model persists to localStorage per SCO so
+  // suspend/resume can be exercised in preview: reload the page and
+  // cmi.entry reports 'resume' with the saved values intact.
+  var storageKey = 'schorm:scorm:' + window.location.pathname;
   var dataModel = {};
+  var isResumedSession = false;
+
+  try {
+    var persisted = localStorage.getItem(storageKey);
+    if (persisted) {
+      dataModel = JSON.parse(persisted) || {};
+      isResumedSession = Object.keys(dataModel).length > 0;
+    }
+  } catch (e) {
+    console.warn('[SCHORM Preview] Could not read persisted SCORM state', e);
+  }
+
+  function persistDataModel() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(dataModel));
+    } catch (e) {
+      console.warn('[SCHORM Preview] Could not persist SCORM state', e);
+    }
+  }
 
   function collectionCount(collection) {
     var maxIndex = -1;
@@ -70,7 +92,7 @@ const MOCK_SCORM_API = `
       // Return empty string for most values, except specific cases
       if (element === 'cmi.completion_status') return 'unknown';
       if (element === 'cmi.success_status') return 'unknown';
-      if (element === 'cmi.entry') return 'ab-initio';
+      if (element === 'cmi.entry') return isResumedSession ? 'resume' : 'ab-initio';
       if (element === 'cmi.mode') return 'normal';
       return '';
     },
@@ -78,6 +100,7 @@ const MOCK_SCORM_API = `
     SetValue: function(element, value) {
       console.log('[SCORM API] SetValue called:', element, '=', value);
       dataModel[element] = String(value);
+      persistDataModel();
       return 'true';
     },
     

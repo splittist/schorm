@@ -250,8 +250,9 @@ Paragraph after media.
       // Find the position of the schorm_media token
       let mediaTokenIndex = -1;
       for (let i = 0; i < tokens.length; i++) {
-        if (tokens[i].type === 'paragraph_open' && tokens[i + 1].children) {
-          for (const child of tokens[i + 1].children) {
+        const children = tokens[i + 1]?.children;
+        if (tokens[i].type === 'paragraph_open' && children) {
+          for (const child of children) {
             if (child.type === 'schorm_media') {
               mediaTokenIndex = i;
               break;

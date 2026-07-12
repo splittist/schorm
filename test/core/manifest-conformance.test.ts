@@ -88,16 +88,16 @@ const quizzes: Quiz[] = [
 
 const mediaFiles: MediaFile[] = [
   {
-    sourcePath: '/project/media/m1/narration.mp3',
+    originalPath: '/project/media/m1/narration.mp3',
     relativePath: 'm1/narration.mp3',
-    size: 128,
-    mimeType: '',
+    type: 'audio',
+    mimeType: 'audio/mpeg',
   },
   {
-    sourcePath: '/project/media/m1/orphan.png',
+    originalPath: '/project/media/m1/orphan.png',
     relativePath: 'm1/orphan.png',
-    size: 64,
-    mimeType: '',
+    type: 'image',
+    mimeType: 'image/png',
   },
 ];
 

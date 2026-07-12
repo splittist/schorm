@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'yaml';
 import matter from 'gray-matter';
-import Ajv from 'ajv';
+import { Ajv } from 'ajv';
 import { validateQuiz } from '../../src/core/quiz-validator.js';
 import type { QuizValidationError } from '../../src/core/quiz-validator.js';
 import { DEFAULT_PASSING_SCORE } from '../../src/core/quiz-model.js';

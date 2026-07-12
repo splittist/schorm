@@ -12,11 +12,13 @@ import {
   buildScenarioGraph,
   generateSequencingFromGraph,
   processScenarioLinks,
+  detectCycles,
 } from '../core/scenario-builder.js';
 import type { BuildError, BuildResult } from '../core/build-error.js';
 import type { MediaFile } from '../core/media.js';
 import type { Lesson, Quiz } from '../core/course-model.js';
 import {
+  createBuildError,
   wrapError,
   formatErrorsForHuman,
   formatBuildResultAsJson,
@@ -117,6 +119,19 @@ export const buildCommand = new Command('build')
             const graph = await buildScenarioGraph(contentDir, scenarioConfig.start);
 
             log(`      Found ${graph.nodes.size} scenes (${graph.endings.size} endings)`);
+
+            // Navigation loops ("try again" scenes) are legitimate in
+            // scenarios, but often unintentional - surface them as warnings
+            for (const cycle of detectCycles(graph)) {
+              warnings.push(
+                createBuildError(
+                  'W-SCENARIO-CYCLE',
+                  `Scenario navigation loop in module "${module.id}": ${cycle}`,
+                  { moduleId: module.id, originatingStep: 'scenario', severity: 'warning' }
+                )
+              );
+              log(`      ⚠ ${cycle}`);
+            }
 
             // Generate sequencing data (will be used in manifest generation)
             const sequencingData = generateSequencingFromGraph(graph, module.id);

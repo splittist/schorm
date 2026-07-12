@@ -120,9 +120,11 @@
         // Initialize SCORM
         SchormRuntime.init();
         
-        const currentScene = '{{lesson.id}}';
+        // JSON-encoded so frontmatter values can never break out of the
+        // script context (ids/mastery are also validated at build time)
+        const currentScene = {{{jsonStringify lesson.id}}};
         const isEnding = {{#if lesson.isEnding}}true{{else}}false{{/if}};
-        const masteryScore = {{#if lesson.masteryScore}}{{lesson.masteryScore}}{{else}}null{{/if}};
+        const masteryScore = {{#if lesson.masteryScore}}{{{jsonStringify lesson.masteryScore}}}{{else}}null{{/if}};
         
         // Save current location
         SchormRuntime.setValue('cmi.location', currentScene);
@@ -144,7 +146,7 @@
                 // Set objective indicating this choice was made
                 // This enables the target scene via SCORM sequencing preconditions
                 const choiceKey = currentScene + '_to_' + target;
-                const objectiveId = 'obj_{{lesson.module}}_' + choiceKey.replace(/[^a-zA-Z0-9]/g, '_');
+                const objectiveId = 'obj_' + {{{jsonStringify lesson.module}}} + '_' + choiceKey.replace(/[^a-zA-Z0-9]/g, '_');
                 
                 // Find the next available objective index
                 // Check if this objective already exists, otherwise use the next available slot

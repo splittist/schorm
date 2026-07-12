@@ -319,7 +319,9 @@ npm test        # vitest
 
 ## Contributing
 
-Discussion, issues, and PRs are welcome.
+Discussion, issues, and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup, the CI gates, and the conventions that keep schemas, docs, and
+code in sync. Notable changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 Useful docs:
 

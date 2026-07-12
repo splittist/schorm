@@ -97,10 +97,13 @@ and verified to stay within the served directory (403 otherwise).
   SCORM-mapped type, learner_response and correct_responses patterns, result,
   weighting, timestamp), appended after any existing interactions via
   `cmi.interactions._count`.
-- **No suspend/resume or bookmarking outside scenario mode.** Only
-  `scenario.html` sets `cmi.location`/`cmi.suspend_data`. Lessons and quizzes
-  have no re-entry handling (`cmi.entry`/`cmi.exit`), and quizzes don't restore
-  prior answers.
+- ~~**No suspend/resume or bookmarking outside scenario mode.**~~ **Done
+  (July 2026):** every SCO now reports `cmi.exit` ('suspend' before
+  completion, normal after) and terminates on page leave; quizzes persist
+  answers to `cmi.suspend_data` as they change and restore them on re-entry,
+  re-displaying results with submission locked after a submitted attempt.
+  The preview mock persists per-SCO state in localStorage so resume works
+  by reloading the page.
 - ~~**`findAPI` never checks `window.opener`.**~~ **Done (July 2026):** after
   exhausting the parent chain the runtime now searches the opener's parent
   chain (cross-origin guarded), so popup-launched SCOs find the API.
@@ -136,10 +139,10 @@ and verified to stay within the served directory (403 otherwise).
   runs with `html: true`. **The trust model is now documented** in
   `docs/runtime-behavior.md` (content authors are trusted; sanitize LLM output
   before building). Actual sanitization (or opt-in `html: true`) remains open.
-- **`scenario.html` interpolates unvalidated values into inline JS** —
-  `masteryScore` comes from frontmatter and is never validated as a number, and
-  scenario scene IDs are not run through `validateLessonId`. A hostile or
-  malformed value yields broken or injectable script.
+- ~~**`scenario.html` interpolates unvalidated values into inline JS.**~~
+  **Done (July 2026):** `mastery` is validated as a 0–1 number and scene ids
+  through `validateLessonId` at crawl time, and the template's inline-JS
+  interpolations are JSON-encoded (defense in depth).
 - **`init`/`new` do no path-component sanitization** before creating directories
   from the project name / module segment (IDs are validated later, after paths
   are resolved).
@@ -207,7 +210,10 @@ single small subsection):
 - Implement the planned `schorm lint` and `schorm graph` commands
   (`schorm schema` shipped July 2026).
 - SCORM 1.2 export (the config knob now rejects it explicitly until built).
-- Partial-credit scoring for multiple-response and matching.
+- ~~Partial-credit scoring for multiple-response and matching.~~ **Done
+  (July 2026):** `scoring.mode: partial` is honored with
+  perCorrect/penaltyPerIncorrect/minScore semantics (proportional when
+  params are omitted), verified by executable runtime tests.
 - ~~**A full end-to-end example course.**~~ **Done (July 2026):**
   `examples/linear-course/` — lessons with media, a mixed-type gating quiz,
   linear sequencing, and a walkthrough README; validated against the schemas
@@ -225,8 +231,8 @@ single small subsection):
   `(lesson as any).isScenario/isEnding/masteryScore/sceneChoices`. These deserve
   real types (extend the models or use a dedicated scenario type).
 - Duplicated logic: DFS cycle detection exists in both `course-model.ts` and
-  `scenario-builder.ts` (the latter — `detectCycles` — is exported but never
-  called, so scenario navigation cycles are never actually reported);
+  `scenario-builder.ts` (`detectCycles` is now wired into the build as a
+  `W-SCENARIO-CYCLE` warning, July 2026, but the duplication remains);
   `escapeHtml`/`escapeRegex` are re-implemented locally in `scenario-builder.ts`.
 - Hardcoded constants: the default passing score `0.8` is still duplicated
   between `manifest.ts` and `schorm-runtime.js` (though the manifest gate now

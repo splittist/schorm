@@ -84,9 +84,11 @@ references, `[[blank]]` marker coupling). Key semantics:
   LMS and used by quiz-gated sequencing.
 - Five question types: `single-choice`, `multiple-response`, `true-false`,
   `fill-blank`, `matching`.
-- Scoring today: choice and matching questions are all-or-nothing;
-  fill-blank awards partial credit per correct blank. A `scoring:` block is
-  accepted but **`mode: partial` is not yet implemented** — don't rely on it.
+- Scoring: single-choice/true-false are right-or-wrong; fill-blank awards
+  partial credit per correct blank; multiple-response and matching are
+  all-or-nothing by default, or per-selection/per-pair credit with a
+  question-level `scoring: { mode: partial }` block (optional `perCorrect`,
+  `penaltyPerIncorrect`, `minScore` — see the schema for exact semantics).
 
 ## Validation
 

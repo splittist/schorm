@@ -41,10 +41,15 @@ the quiz model embedded in the page, then writes in one batch and commits:
   points), and `timestamp`. Records append after any existing interactions
   (via `cmi.interactions._count`), enabling item-level analytics in the LMS.
 
-Scoring: single-choice, multiple-response, true-false and matching are
-all-or-nothing per question; fill-blank awards partial credit per correct
-blank. A quiz `scoring:` block with `mode: partial` is accepted by the
-format but **not yet implemented** by this runtime.
+Scoring: single-choice and true-false are right-or-wrong. Fill-blank always
+awards partial credit per correct blank. Multiple-response and matching are
+all-or-nothing by default; a question-level `scoring: { mode: partial }`
+switches them to per-selection/per-pair credit —
+`perCorrect × correct − penaltyPerIncorrect × incorrect`, clamped between
+`minScore` (default 0) and the question's points, with proportional credit
+when no params are given. Wrongly matched premises count as incorrect;
+unanswered ones just earn nothing. See `schorm schema quiz` for the exact
+parameter semantics.
 
 ## Scenario mode
 
@@ -55,9 +60,19 @@ reached ending's `mastery` value. See
 
 ## Re-entry (suspend/resume)
 
-**Not yet implemented outside scenario mode.** Lessons and quizzes do not set
-`cmi.exit`, restore prior answers, or bookmark position; relaunching a SCO
-starts it fresh (planned).
+Leaving any SCO before it reports completion sets `cmi.exit = 'suspend'`
+(after completion, a normal exit), commits, and terminates the session, so
+the LMS offers to resume.
+
+Quizzes fully support resuming: answers are saved to `cmi.suspend_data`
+(JSON) as the learner changes them, and restored into the form on re-entry.
+If the quiz was already submitted, re-entry re-displays the results and
+keeps submission locked. In `schorm preview`, the mock API persists its data
+model per page in localStorage, so simply reloading the page exercises the
+whole resume flow (clear site data to start fresh).
+
+Scenario scenes additionally track the learner's path in
+`cmi.location`/`cmi.suspend_data` as before.
 
 ## Limitations & trust model
 

@@ -120,20 +120,29 @@
 
     "scoringConfig": {
       "type": "object",
-      "description": "Declarative scoring configuration. NOTE: the current (v0.3) runtime ignores this block - multiple-response and matching questions are always scored all-or-nothing, and only fill-blank questions award partial credit (per correct blank). Do not rely on 'partial' semantics until a future release implements them.",
+      "description": "Scoring configuration for multiple-response and matching questions. Default (omitted or mode 'all-or-nothing'): full points only for an exactly-correct answer. With mode 'partial', credit accrues per correct selection/pair: score = perCorrect * correct - penaltyPerIncorrect * incorrect, clamped between minScore (default 0) and the question's points. Unanswered matching premises earn nothing but are not penalized. When 'partial' params are omitted, credit is proportional (correct/total * points), like fill-blank questions.",
       "properties": {
         "mode": {
           "type": "string",
           "enum": ["all-or-nothing", "partial"],
-          "description": "Intended scoring mode. Currently only 'all-or-nothing' behavior is implemented for choice and matching questions."
+          "description": "Scoring mode. 'all-or-nothing' (default) or 'partial' per-selection credit."
         },
         "partial": {
           "type": "object",
-          "description": "Parameters for partial-credit scoring. Currently not implemented by the runtime.",
+          "description": "Partial-credit parameters. Defaults: perCorrect = points / number of correct answers, penaltyPerIncorrect = 0, minScore = 0.",
           "properties": {
-            "perCorrect": { "type": "number" },
-            "penaltyPerIncorrect": { "type": "number" },
-            "minScore": { "type": "number" }
+            "perCorrect": {
+              "type": "number",
+              "description": "Points awarded per correct selection/pair."
+            },
+            "penaltyPerIncorrect": {
+              "type": "number",
+              "description": "Points deducted per incorrect selection (or wrongly matched premise)."
+            },
+            "minScore": {
+              "type": "number",
+              "description": "Lower bound for the question score after penalties (default 0)."
+            }
           },
           "additionalProperties": false
         }
@@ -177,7 +186,7 @@
     },
 
     "multipleResponseQuestion": {
-      "description": "Select-all-that-apply question, rendered as checkboxes. Scored all-or-nothing: the learner must select exactly the correct set.",
+      "description": "Select-all-that-apply question, rendered as checkboxes. All-or-nothing by default; set scoring.mode 'partial' for per-selection credit.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
@@ -298,7 +307,7 @@
     },
 
     "matchingQuestion": {
-      "description": "Matching question: each premise is paired with a response via dropdown selects. Scored all-or-nothing.",
+      "description": "Matching question: each premise is paired with a response via dropdown selects. All-or-nothing by default; set scoring.mode 'partial' for per-pair credit.",
       "allOf": [
         {
           "$ref": "#/$defs/questionBase"
